@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Space Coast Water Ops</title>
 
+  <!-- Leaflet map library -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  >
+
   <style>
     :root {
       --background: #071624;
@@ -17,6 +24,7 @@
       --green: #43d17b;
       --yellow: #f4bd3f;
       --red: #ec6262;
+      --gold: #f7c948;
       --error-bg: #5b2222;
     }
 
@@ -41,7 +49,7 @@
 
     main,
     .header-content {
-      width: min(1180px, calc(100% - 32px));
+      width: min(1200px, calc(100% - 32px));
       margin: 0 auto;
     }
 
@@ -162,7 +170,7 @@
       grid-column: span 7;
     }
 
-    .satellite-card {
+    .map-card {
       grid-column: span 5;
     }
 
@@ -248,25 +256,19 @@
       font-size: 0.73rem;
     }
 
-    .satellite-image {
-      display: block;
+    #copMap {
       width: 100%;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
+      height: 460px;
       border: 1px solid var(--border);
       border-radius: 8px;
-      background: #06111c;
+      background: #0b2234;
     }
 
-    .satellite-meta {
+    .map-note {
       margin: 10px 0 0;
       color: var(--muted);
       font-size: 0.82rem;
       line-height: 1.4;
-    }
-
-    a {
-      color: #72d8f3;
     }
 
     .source-list {
@@ -278,15 +280,30 @@
       line-height: 1.4;
     }
 
+    a {
+      color: #72d8f3;
+    }
+
     footer {
       padding-top: 22px;
       font-size: 0.82rem;
       line-height: 1.45;
     }
 
+    .leaflet-popup-content-wrapper,
+    .leaflet-popup-tip {
+      color: #eef7fc;
+      background: #102b40;
+    }
+
+    .leaflet-popup-content {
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.4;
+    }
+
     @media (max-width: 900px) {
       .conditions-card,
-      .satellite-card {
+      .map-card {
         grid-column: span 12;
       }
     }
@@ -294,7 +311,7 @@
     @media (max-width: 650px) {
       main,
       .header-content {
-        width: min(100% - 24px, 1180px);
+        width: min(100% - 24px, 1200px);
       }
 
       .metrics-grid {
@@ -305,6 +322,10 @@
       button {
         width: 100%;
       }
+
+      #copMap {
+        height: 380px;
+      }
     }
   </style>
 </head>
@@ -314,7 +335,7 @@
     <div class="header-content">
       <h1>Space Coast Water Ops</h1>
       <p class="subtitle">
-        Wind, waves, air temperature, sea temperature, NDBC observations, and GOES-East satellite imagery.
+        Common operating picture, NDBC buoy observations, and forecast marine conditions.
       </p>
     </div>
   </header>
@@ -326,13 +347,13 @@
 
         <select id="siteSelect">
           <option value="portCanaveral">Port Canaveral / Nearshore</option>
-          <option value="cocoaBeach">Cocoa Beach</option>
-          <option value="sebastianInlet">Sebastian Inlet</option>
+          <option value="bananaRiver">Banana River</option>
+          <option value="indianRiver">Indian River Lagoon</option>
         </select>
       </div>
 
       <button id="refreshButton" type="button">
-        Refresh All Data
+        Refresh Conditions
       </button>
     </section>
 
@@ -356,25 +377,25 @@
           <div class="metric">
             <span class="metric-label">Wind</span>
             <span id="windSpeed" class="metric-value">--</span>
-            <span class="metric-source">Open-Meteo</span>
+            <span id="windSource" class="metric-source">--</span>
           </div>
 
           <div class="metric">
             <span class="metric-label">Wind Gusts</span>
             <span id="windGusts" class="metric-value">--</span>
-            <span class="metric-source">Open-Meteo</span>
+            <span id="gustSource" class="metric-source">--</span>
           </div>
 
           <div class="metric">
             <span class="metric-label">Wave Height</span>
             <span id="waveHeight" class="metric-value">--</span>
-            <span class="metric-source">Open-Meteo Marine</span>
+            <span id="waveSource" class="metric-source">--</span>
           </div>
 
           <div class="metric">
             <span class="metric-label">Wave Period</span>
             <span id="wavePeriod" class="metric-value">--</span>
-            <span class="metric-source">Open-Meteo Marine</span>
+            <span id="periodSource" class="metric-source">--</span>
           </div>
 
           <div class="metric">
@@ -391,26 +412,15 @@
         </div>
       </article>
 
-      <article class="card satellite-card">
-        <h2>GOES-East Satellite Image</h2>
+      <article class="card map-card">
+        <h2>Common Operating Picture</h2>
 
-        <img
-          id="satelliteImage"
-          class="satellite-image"
-          src=""
-          alt="Latest NOAA GOES-East GeoColor satellite image"
-        >
+        <div id="copMap"></div>
 
-        <p class="satellite-meta">
-          Product: GOES-East GeoColor full-disk imagery.<br>
-          <span id="satelliteUpdated">Image refresh pending.</span><br>
-          <a
-            href="https://www.goes.noaa.gov/fulldisk.php?sat=G19&src=nav"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Open NOAA GOES-East imagery page
-          </a>
+        <p class="map-note">
+          Use the layer-control icon in the upper-right corner of the map to select
+          <strong>Satellite</strong>, <strong>Dark</strong>, or <strong>Street</strong>.
+          Gold marker = NOAA NDBC Station 41009.
         </p>
       </article>
 
@@ -422,13 +432,13 @@
           <li id="marineSourceStatus">Open-Meteo marine: pending.</li>
           <li id="ndbcSourceStatus">NOAA NDBC Station 41009: pending.</li>
           <li>
-            NOAA NDBC Station:
+            NDBC Station 41009:
             <a
               href="https://www.ndbc.noaa.gov/station_page.php?station=41009"
               target="_blank"
               rel="noopener noreferrer"
             >
-              41009 — Canaveral East
+              Canaveral — 20 NM east of Cape Canaveral
             </a>
           </li>
         </ul>
@@ -436,11 +446,16 @@
     </section>
 
     <footer>
-      This dashboard is a planning aid only. Confirm current official weather products,
-      marine warnings, local restrictions, craft limitations, and organizational operating
-      procedures before conducting water operations.
+      This dashboard is a planning aid only. Confirm official weather products,
+      marine warnings, local restrictions, craft limitations, and organizational
+      operating procedures before conducting water operations.
     </footer>
   </main>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    crossorigin=""
+  ></script>
 
   <script>
     const SITES = {
@@ -449,26 +464,30 @@
         lat: 28.410,
         lon: -80.590
       },
-      cocoaBeach: {
-        name: "Cocoa Beach",
-        lat: 28.320,
-        lon: -80.608
+      bananaRiver: {
+        name: "Banana River",
+        lat: 28.375,
+        lon: -80.630
       },
-      sebastianInlet: {
-        name: "Sebastian Inlet",
-        lat: 27.861,
-        lon: -80.447
+      indianRiver: {
+        name: "Indian River Lagoon",
+        lat: 28.420,
+        lon: -80.730
       }
     };
 
-    const NDBC_STATION = "41009";
-    const NDBC_URL =
-      "https://www.ndbc.noaa.gov/data/realtime2/41009.txt";
-
-    const GOES_EAST_IMAGE_URL =
-      "https://cdn.star.nesdis.noaa.gov/GOES19/ABI/FD/GEOCOLOR/1808x1808.jpg";
+    const NDBC_41009 = {
+      id: "41009",
+      name: "NOAA NDBC Station 41009",
+      description: "Canaveral — 20 NM east of Cape Canaveral",
+      lat: 28.508,
+      lon: -80.185,
+      pageUrl: "https://www.ndbc.noaa.gov/station_page.php?station=41009",
+      realtimeUrl: "https://www.ndbc.noaa.gov/data/realtime2/41009.txt"
+    };
 
     const FEET_PER_METER = 3.28084;
+    const KNOTS_PER_MPS = 1.94384;
 
     const siteSelect = document.getElementById("siteSelect");
     const refreshButton = document.getElementById("refreshButton");
@@ -476,16 +495,17 @@
     const errorBox = document.getElementById("errorBox");
     const dashboard = document.getElementById("dashboard");
 
+    let copMap;
+    let selectedSiteMarker;
+
     function formatNumber(value, decimals = 1) {
       return Number.isFinite(value) ? value.toFixed(decimals) : "--";
     }
 
     function celsiusToFahrenheit(celsius) {
-      if (!Number.isFinite(celsius)) {
-        return null;
-      }
-
-      return (celsius * 9 / 5) + 32;
+      return Number.isFinite(celsius)
+        ? (celsius * 9 / 5) + 32
+        : null;
     }
 
     function directionToCompass(degrees) {
@@ -504,19 +524,24 @@
     }
 
     function parseNdbcValue(value) {
-      if (value === undefined || value === null || value === "MM") {
+      if (!value || value === "MM") {
         return null;
       }
 
-      const number = Number(value);
+      const parsed = Number(value);
 
-      return Number.isFinite(number) ? number : null;
+      return Number.isFinite(parsed) ? parsed : null;
     }
 
     /*
-      Reads the newest observation from the NDBC standard meteorological file.
-      ATMP = air temperature in Celsius.
-      WTMP = water temperature in Celsius.
+      Parses the most recent line from the NDBC standard meteorological file.
+
+      WSPD = wind speed in meters per second
+      GST  = wind gust in meters per second
+      WVHT = significant wave height in meters
+      DPD  = dominant wave period in seconds
+      ATMP = air temperature in Celsius
+      WTMP = water temperature in Celsius
     */
     function parseNdbcObservation(text) {
       const lines = text
@@ -535,15 +560,16 @@
         .trim()
         .split(/\s+/);
 
-      const newestObservationLine = lines.find((line) => {
-        return !line.startsWith("#") && /^\d{4}\s+\d{2}\s+\d{2}/.test(line);
+      const latestLine = lines.find((line) => {
+        return !line.startsWith("#") &&
+          /^\d{4}\s+\d{2}\s+\d{2}/.test(line);
       });
 
-      if (!newestObservationLine) {
+      if (!latestLine) {
         throw new Error("NDBC did not return a current observation.");
       }
 
-      const values = newestObservationLine.split(/\s+/);
+      const values = latestLine.split(/\s+/);
       const observation = {};
 
       headers.forEach((header, index) => {
@@ -551,39 +577,41 @@
       });
 
       return {
-        observationTimeUtc:
+        timeUtc:
           `${observation.YY}-${observation.MM}-${observation.DD} ` +
           `${observation.hh}:${observation.mm} UTC`,
 
-        airTemperatureC: parseNdbcValue(observation.ATMP),
-        seaTemperatureC: parseNdbcValue(observation.WTMP),
-
-        windSpeedMs: parseNdbcValue(observation.WSPD),
-        windGustMs: parseNdbcValue(observation.GST),
-        waveHeightMeters: parseNdbcValue(observation.WVHT)
+        windDirection: parseNdbcValue(observation.WDIR),
+        windSpeedKnots: parseNdbcValue(observation.WSPD) * KNOTS_PER_MPS,
+        windGustKnots: parseNdbcValue(observation.GST) * KNOTS_PER_MPS,
+        waveHeightFeet: parseNdbcValue(observation.WVHT) * FEET_PER_METER,
+        wavePeriodSeconds: parseNdbcValue(observation.DPD),
+        airTemperatureF: celsiusToFahrenheit(
+          parseNdbcValue(observation.ATMP)
+        ),
+        seaTemperatureF: celsiusToFahrenheit(
+          parseNdbcValue(observation.WTMP)
+        )
       };
     }
 
+    /*
+      NDBC data are optional. The dashboard will still load if a browser blocks
+      the direct realtime request because of cross-origin (CORS) restrictions.
+    */
     async function fetchNdbc41009() {
-      const response = await fetch(`${NDBC_URL}?t=${Date.now()}`, {
-        cache: "no-store"
-      });
+      const response = await fetch(
+        `${NDBC_41009.realtimeUrl}?t=${Date.now()}`,
+        { cache: "no-store" }
+      );
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        throw new Error(`NDBC request failed: HTTP ${response.status}`);
       }
 
-      const text = await response.text();
-
-      return parseNdbcObservation(text);
+      return parseNdbcObservation(await response.text());
     }
 
-    /*
-      Main data function:
-      - weather = current air temperature, wind, gusts, wind direction
-      - marine = wave values and sea-surface temperature
-      - ndbc = optional Station 41009 observed air/water temperatures
-    */
     async function fetchSite(site) {
       const weatherParams = new URLSearchParams({
         latitude: String(site.lat),
@@ -617,7 +645,7 @@
         await Promise.allSettled([
           fetch(weatherUrl).then(async (response) => {
             if (!response.ok) {
-              throw new Error(`Weather API HTTP ${response.status}`);
+              throw new Error(`Weather request: HTTP ${response.status}`);
             }
 
             return response.json();
@@ -625,7 +653,7 @@
 
           fetch(marineUrl).then(async (response) => {
             if (!response.ok) {
-              throw new Error(`Marine API HTTP ${response.status}`);
+              throw new Error(`Marine request: HTTP ${response.status}`);
             }
 
             return response.json();
@@ -635,49 +663,43 @@
         ]);
 
       if (weatherResult.status !== "fulfilled") {
-        throw new Error(
-          `Weather request failed: ${weatherResult.reason.message}`
-        );
+        throw new Error(weatherResult.reason.message);
       }
 
       if (marineResult.status !== "fulfilled") {
-        throw new Error(
-          `Marine request failed: ${marineResult.reason.message}`
-        );
+        throw new Error(marineResult.reason.message);
       }
 
       return {
         site,
         weather: weatherResult.value,
         marine: marineResult.value,
-        ndbc:
-          ndbcResult.status === "fulfilled" ? ndbcResult.value : null,
-        ndbcError:
-          ndbcResult.status === "rejected"
-            ? ndbcResult.reason.message
-            : null
+        ndbc: ndbcResult.status === "fulfilled" ? ndbcResult.value : null,
+        ndbcError: ndbcResult.status === "rejected"
+          ? ndbcResult.reason.message
+          : null
       };
     }
 
-    function findMarineIndex(weatherTime, marineTimes) {
+    function findClosestMarineIndex(weatherTime, marineTimes) {
       const exactIndex = marineTimes.indexOf(weatherTime);
 
       if (exactIndex !== -1) {
         return exactIndex;
       }
 
-      const requestedTime = new Date(weatherTime).getTime();
+      const targetTime = new Date(weatherTime).getTime();
       let closestIndex = 0;
-      let smallestDifference = Infinity;
+      let shortestDifference = Infinity;
 
-      marineTimes.forEach((time, index) => {
+      marineTimes.forEach((marineTime, index) => {
         const difference = Math.abs(
-          new Date(time).getTime() - requestedTime
+          new Date(marineTime).getTime() - targetTime
         );
 
-        if (difference < smallestDifference) {
-          smallestDifference = difference;
+        if (difference < shortestDifference) {
           closestIndex = index;
+          shortestDifference = difference;
         }
       });
 
@@ -687,147 +709,277 @@
     function getOperationalStatus(windKnots, gustKnots, waveFeet) {
       if (windKnots > 20 || gustKnots > 25 || waveFeet > 5) {
         return {
-          label: "No-Go / Hazardous",
           level: "RED",
+          label: "No-Go / Hazardous",
           css: "red"
         };
       }
 
       if (windKnots >= 15 || gustKnots >= 20 || waveFeet >= 3) {
         return {
-          label: "Caution / Marginal",
           level: "YELLOW",
+          label: "Caution / Marginal",
           css: "yellow"
         };
       }
 
       return {
-        label: "Favorable",
         level: "GREEN",
+        label: "Favorable",
         css: "green"
       };
     }
 
-    function setTemperature(elementId, sourceElementId, value, sourceText) {
-      const temperatureElement = document.getElementById(elementId);
-      const sourceElement = document.getElementById(sourceElementId);
-
-      temperatureElement.textContent = Number.isFinite(value)
-        ? `${value.toFixed(1)} °F`
-        : "Not reported";
-
-      sourceElement.textContent = sourceText;
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
     }
 
-    function renderDashboard(data) {
-      const currentWeather = data.weather.current;
-      const marineHourly = data.marine.hourly;
+    function setMetric(valueId, sourceId, value, source) {
+      setText(valueId, value);
+      setText(sourceId, source);
+    }
 
-      const marineIndex = findMarineIndex(
-        currentWeather.time,
-        marineHourly.time
+    function renderConditions(data) {
+      const weather = data.weather.current;
+      const marineIndex = findClosestMarineIndex(
+        weather.time,
+        data.marine.hourly.time
       );
 
-      const waveMeters = marineHourly.wave_height[marineIndex];
-      const waveFeet = Number.isFinite(waveMeters)
-        ? waveMeters * FEET_PER_METER
-        : null;
-
-      const wavePeriod = marineHourly.wave_period[marineIndex];
-      const waveDirection = marineHourly.wave_direction[marineIndex];
-
-      const forecastSeaTemperature =
-        marineHourly.sea_surface_temperature[marineIndex];
-
-      const decision = getOperationalStatus(
-        currentWeather.wind_speed_10m,
-        currentWeather.wind_gusts_10m,
-        waveFeet
-      );
-
-      document.getElementById("siteName").textContent =
-        `${data.site.name} — current conditions`;
-
-      document.getElementById("windSpeed").textContent =
-        `${formatNumber(currentWeather.wind_speed_10m)} kt ` +
-        `${directionToCompass(currentWeather.wind_direction_10m)}`;
-
-      document.getElementById("windGusts").textContent =
-        `${formatNumber(currentWeather.wind_gusts_10m)} kt`;
-
-      document.getElementById("waveHeight").textContent =
-        `${formatNumber(waveFeet)} ft`;
-
-      document.getElementById("wavePeriod").textContent =
-        `${formatNumber(wavePeriod)} sec ` +
-        `${directionToCompass(waveDirection)}`;
+      const marine = {
+        waveHeightFeet:
+          data.marine.hourly.wave_height[marineIndex] * FEET_PER_METER,
+        wavePeriod:
+          data.marine.hourly.wave_period[marineIndex],
+        waveDirection:
+          data.marine.hourly.wave_direction[marineIndex],
+        seaTemperature:
+          data.marine.hourly.sea_surface_temperature[marineIndex]
+      };
 
       /*
-        Prefer NDBC Station 41009 observed temperature data.
-        If NDBC is unavailable or a value is missing, use the forecast-source fallback.
+        Use NDBC observations when a station value exists.
+        Otherwise, retain local Open-Meteo data as the fallback.
       */
-      const ndbcAirF = data.ndbc
-        ? celsiusToFahrenheit(data.ndbc.airTemperatureC)
-        : null;
+      const wind = Number.isFinite(data.ndbc?.windSpeedKnots)
+        ? data.ndbc.windSpeedKnots
+        : weather.wind_speed_10m;
 
-      const ndbcSeaF = data.ndbc
-        ? celsiusToFahrenheit(data.ndbc.seaTemperatureC)
-        : null;
+      const gust = Number.isFinite(data.ndbc?.windGustKnots)
+        ? data.ndbc.windGustKnots
+        : weather.wind_gusts_10m;
 
-      setTemperature(
+      const waveHeight = Number.isFinite(data.ndbc?.waveHeightFeet)
+        ? data.ndbc.waveHeightFeet
+        : marine.waveHeightFeet;
+
+      const wavePeriod = Number.isFinite(data.ndbc?.wavePeriodSeconds)
+        ? data.ndbc.wavePeriodSeconds
+        : marine.wavePeriod;
+
+      const airTemperature = Number.isFinite(data.ndbc?.airTemperatureF)
+        ? data.ndbc.airTemperatureF
+        : weather.temperature_2m;
+
+      const seaTemperature = Number.isFinite(data.ndbc?.seaTemperatureF)
+        ? data.ndbc.seaTemperatureF
+        : marine.seaTemperature;
+
+      const ndbcTime = data.ndbc?.timeUtc || null;
+      const decision = getOperationalStatus(wind, gust, waveHeight);
+
+      setText(
+        "siteName",
+        `${data.site.name} — current conditions`
+      );
+
+      setMetric(
+        "windSpeed",
+        "windSource",
+        `${formatNumber(wind)} kt ${
+          Number.isFinite(data.ndbc?.windDirection)
+            ? directionToCompass(data.ndbc.windDirection)
+            : directionToCompass(weather.wind_direction_10m)
+        }`,
+        ndbcTime ? `NOAA NDBC 41009 observed (${ndbcTime})` :
+          "Open-Meteo current forecast/analysis"
+      );
+
+      setMetric(
+        "windGusts",
+        "gustSource",
+        `${formatNumber(gust)} kt`,
+        ndbcTime ? "NOAA NDBC 41009 observed" :
+          "Open-Meteo current forecast/analysis"
+      );
+
+      setMetric(
+        "waveHeight",
+        "waveSource",
+        `${formatNumber(waveHeight)} ft`,
+        ndbcTime ? "NOAA NDBC 41009 observed" :
+          "Open-Meteo marine forecast/analysis"
+      );
+
+      setMetric(
+        "wavePeriod",
+        "periodSource",
+        `${formatNumber(wavePeriod)} sec`,
+        ndbcTime ? "NOAA NDBC 41009 observed" :
+          `Open-Meteo marine — ${directionToCompass(marine.waveDirection)}`
+      );
+
+      setMetric(
         "airTemperature",
         "airTemperatureSource",
-        Number.isFinite(ndbcAirF)
-          ? ndbcAirF
-          : currentWeather.temperature_2m,
-        Number.isFinite(ndbcAirF)
-          ? `NOAA NDBC 41009 observed (${data.ndbc.observationTimeUtc})`
-          : "Open-Meteo current forecast/analysis"
+        `${formatNumber(airTemperature)} °F`,
+        ndbcTime ? "NOAA NDBC 41009 observed" :
+          "Open-Meteo current forecast/analysis"
       );
 
-      setTemperature(
+      setMetric(
         "seaTemperature",
         "seaTemperatureSource",
-        Number.isFinite(ndbcSeaF)
-          ? ndbcSeaF
-          : forecastSeaTemperature,
-        Number.isFinite(ndbcSeaF)
-          ? `NOAA NDBC 41009 observed (${data.ndbc.observationTimeUtc})`
-          : "Open-Meteo marine forecast/analysis"
+        `${formatNumber(seaTemperature)} °F`,
+        ndbcTime ? "NOAA NDBC 41009 observed" :
+          "Open-Meteo marine forecast/analysis"
       );
 
-      document.getElementById("operationsStatus").textContent =
-        decision.label;
+      setText("operationsStatus", decision.label);
 
       const badge = document.getElementById("operationsBadge");
       badge.textContent = decision.level;
       badge.className = `badge ${decision.css}`;
 
-      document.getElementById("weatherSourceStatus").textContent =
-        `Open-Meteo weather: loaded for ${data.site.name}.`;
+      setText(
+        "weatherSourceStatus",
+        `Open-Meteo weather: loaded for ${data.site.name}.`
+      );
 
-      document.getElementById("marineSourceStatus").textContent =
-        "Open-Meteo marine: loaded.";
+      setText(
+        "marineSourceStatus",
+        "Open-Meteo marine: loaded."
+      );
 
-      document.getElementById("ndbcSourceStatus").textContent = data.ndbc
-        ? `NOAA NDBC Station 41009: observation loaded (${data.ndbc.observationTimeUtc}).`
-        : `NOAA NDBC Station 41009: unavailable; temperature fallback active. ${data.ndbcError || ""}`;
+      setText(
+        "ndbcSourceStatus",
+        data.ndbc
+          ? `NOAA NDBC Station 41009: observed data loaded (${ndbcTime}).`
+          : `NOAA NDBC Station 41009: direct observations unavailable in this browser; Open-Meteo fallback active. ${data.ndbcError || ""}`
+      );
     }
 
-    function refreshSatelliteImage() {
-      const image = document.getElementById("satelliteImage");
+    function createCircleMarker(lat, lon, color, label, popupHtml) {
+      return L.circleMarker([lat, lon], {
+        radius: 8,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: color,
+        fillOpacity: 0.95
+      })
+        .bindTooltip(label, { direction: "top", offset: [0, -8] })
+        .bindPopup(popupHtml);
+    }
 
-      /*
-        Cache-busting query string ensures the browser requests the latest image.
-      */
-      image.src = `${GOES_EAST_IMAGE_URL}?t=${Date.now()}`;
+    function initializeCopMap() {
+      if (copMap) {
+        return;
+      }
 
-      document.getElementById("satelliteUpdated").textContent =
-        `Requested refresh: ${new Date().toLocaleString("en-US", {
-          timeZone: "America/New_York",
-          dateStyle: "medium",
-          timeStyle: "short"
-        })} ET`;
+      copMap = L.map("copMap", {
+        center: [28.405, -80.470],
+        zoom: 10,
+        zoomControl: true
+      });
+
+      const satellite = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/" +
+        "World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 19,
+          attribution: "Tiles © Esri, Maxar, Earthstar Geographics"
+        }
+      );
+
+      const street = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          maxZoom: 19,
+          attribution: "© OpenStreetMap contributors"
+        }
+      );
+
+      const dark = L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        {
+          maxZoom: 19,
+          attribution: "© OpenStreetMap contributors © CARTO"
+        }
+      );
+
+      satellite.addTo(copMap);
+
+      L.control.layers(
+        {
+          Satellite: satellite,
+          "Dark Map": dark,
+          Street: street
+        },
+        null,
+        { collapsed: true }
+      ).addTo(copMap);
+
+      Object.values(SITES).forEach((site) => {
+        createCircleMarker(
+          site.lat,
+          site.lon,
+          "#4bc5e8",
+          site.name,
+          `<strong>${site.name}</strong><br>${site.lat.toFixed(3)}°N, ${Math.abs(site.lon).toFixed(3)}°W`
+        ).addTo(copMap);
+      });
+
+      createCircleMarker(
+        NDBC_41009.lat,
+        NDBC_41009.lon,
+        "#f7c948",
+        "NDBC 41009",
+        `
+          <strong>${NDBC_41009.name}</strong><br>
+          ${NDBC_41009.description}<br>
+          ${NDBC_41009.lat.toFixed(3)}°N, ${Math.abs(NDBC_41009.lon).toFixed(3)}°W<br>
+          <a href="${NDBC_41009.pageUrl}" target="_blank" rel="noopener noreferrer">
+            Open NOAA station page
+          </a>
+        `
+      ).addTo(copMap);
+
+      copMap.invalidateSize();
+    }
+
+    function updateSelectedSiteMarker(site) {
+      if (!copMap) {
+        return;
+      }
+
+      if (selectedSiteMarker) {
+        selectedSiteMarker.remove();
+      }
+
+      selectedSiteMarker = L.circleMarker([site.lat, site.lon], {
+        radius: 13,
+        color: "#ffffff",
+        weight: 3,
+        fillColor: "#e85858",
+        fillOpacity: 0.92
+      })
+        .bindTooltip("Selected Operational Area", {
+          permanent: false,
+          direction: "bottom"
+        })
+        .addTo(copMap);
+
+      copMap.panTo([site.lat, site.lon]);
     }
 
     async function loadDashboard() {
@@ -836,16 +988,18 @@
       refreshButton.disabled = true;
       errorBox.classList.add("hidden");
       dashboard.classList.add("hidden");
-      statusText.textContent = `Loading ${site.name} conditions...`;
-
-      refreshSatelliteImage();
+      statusText.textContent = `Loading conditions for ${site.name}...`;
 
       try {
+        initializeCopMap();
+
         const data = await fetchSite(site);
 
-        renderDashboard(data);
+        renderConditions(data);
+        updateSelectedSiteMarker(site);
 
         dashboard.classList.remove("hidden");
+        copMap.invalidateSize();
 
         statusText.textContent =
           `${site.name} conditions loaded successfully.`;
@@ -862,11 +1016,6 @@
 
     refreshButton.addEventListener("click", loadDashboard);
     siteSelect.addEventListener("change", loadDashboard);
-
-    /*
-      Refresh the displayed NOAA satellite image every 10 minutes.
-    */
-    setInterval(refreshSatelliteImage, 10 * 60 * 1000);
 
     loadDashboard();
   </script>
