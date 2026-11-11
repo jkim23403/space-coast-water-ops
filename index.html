@@ -1,76 +1,109 @@
-try {
-  const settled = await Promise.allSettled(SITES.map(fetchSite));
+async function loadAll() {
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = '↻ Loading...';
 
-  cache = {};
-  const failures = [];
+  try {
+    const settled = await Promise.allSettled(SITES.map(fetchSite));
 
-  settled.forEach((result, index) => {
-    const site = SITES[index];
+    cache = {};
+    const failures = [];
 
-    if (result.status === 'fulfilled') {
-      cache[site.id] = result.value;
-    } else {
-      console.error(`Could not load ${site.name}:`, result.reason);
-      failures.push(`${site.short}: ${result.reason.message}`);
+    settled.forEach((result, index) => {
+      const site = SITES[index];
+
+      if (result.status === 'fulfilled') {
+        cache[site.id] = result.value;
+      } else {
+        console.error(`Could not load ${site.name}:`, result.reason);
+        failures.push(`${site.short}: ${result.reason.message}`);
+      }
+    });
+
+    if (Object.keys(cache).length === 0) {
+      throw new Error(
+        'No weather or marine data could be loaded. Open the browser Console (F12) for the request error.'
+      );
     }
-  });
 
-  if (Object.keys(cache).length === 0) {
-    throw new Error(
-      'No weather or marine data could be loaded. Open the browser Console (F12) for the request error.'
-    );
-  }
+    if (!cache[current]) {
+      current = Object.keys(cache)[0];
+    }
 
-  if (!cache[current]) {
-    current = Object.keys(cache)[0];
-  }
+    SITES.forEach(s => {
+      if (!cache[s.id]) return;
 
-  SITES.forEach(s => {
-    if (cache[s.id]) {
       const d = cache[s.id];
       const wind = msToKt(d.weather.current.wind_speed_10m);
+      const gust = msToKt(d.weather.current.wind_gusts_10m);
       const wave = mToFt(d.marine.current.wave_height);
-      const { s: st } = getStatus(
+
+      const { s: status } = getStatus(
         wind,
-        msToKt(d.weather.current.wind_gusts_10m),
+        gust,
         wave,
         s.type === 'ocean'
       );
 
       const tab = document.getElementById('now-' + s.id);
+
       if (tab) {
         tab.textContent =
-          (st === 'red' ? '🔴' : st === 'yellow' ? '🟡' : '🟢') +
-          ' ' + (wind != null ? wind.toFixed(0) : '—') +
-          ' kt • ' + (wave != null ? wave.toFixed(1) : '—') + ' ft';
+          (status === 'red' ? '🔴' : status === 'yellow' ? '🟡' : '🟢') +
+          ' ' +
+          (wind != null ? wind.toFixed(0) : '—') +
+          ' kt • ' +
+          (wave != null ? wave.toFixed(1) : '—') +
+          ' ft';
       }
-    }
-  });
+    });
 
-  const cur = cache[current];
-  updateLive(cur, current);
-  renderTable(cur, current);
-  updateSummary(cur, current);
-  renderChart(cur);
+    const cur = cache[current];
 
-  if (!map) initMap();
+    updateLive(cur, current);
+    renderTable(cur, current);
+    updateSummary(cur, current);
+    renderChart(cur);
 
-  document.getElementById('lastUpdated').textContent =
-    'Last updated: ' +
-    new Date().toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      timeStyle: 'medium'
-    }) + ' ET';
+    if (!map) initMap();
 
-  const m = cur.marine.current;
-  document.getElementById('b-wvht').textContent =
-    m.wave_height != null ? mToFt(m.wave_height).toFixed(1) : '—';
-  document.getElementById('b-dpd').textContent =
-    m.wave_period != null ? m.wave_period.toFixed(1) : '—';
-  document.getElementById('b-mwd').textContent =
-    m.wave_direction != null ? Math.round(m.wave_direction) + '°' : '—';
+    document.getElementById('lastUpdated').textContent =
+      'Last updated: ' +
+      new Date().toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        timeStyle: 'medium'
+      }) +
+      ' ET';
 
-  document.getElementById('buoyTime').textContent =
-    failures.length
-      ? `Partial data loaded. ${failures.join(' | ')}`
-      : 'Model data loaded from Open-Meteo.';
+    const m = cur.marine.current;
+
+    document.getElementById('b-wvht').textContent =
+      m.wave_height != null ? mToFt(m.wave_height).toFixed(1) : '—';
+
+    document.getElementById('b-dpd').textContent =
+      m.wave_period != null ? m.wave_period.toFixed(1) : '—';
+
+    document.getElementById('b-mwd').textContent =
+      m.wave_direction != null ? Math.round(m.wave_direction) + '°' : '—';
+
+    document.getElementById('buoyTime').textContent =
+      failures.length
+        ? `Partial data loaded. ${failures.join(' | ')}`
+        : 'Model data loaded from Open-Meteo.';
+
+  } catch (e) {
+    console.error(e);
+
+    document.getElementById('sumMain').textContent =
+      'Unable to load live weather and marine data.';
+
+    document.getElementById('sumDetail').textContent =
+      e.message;
+
+    alert('Data load failed: ' + e.message);
+
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ Refresh All';
+  }
+}
