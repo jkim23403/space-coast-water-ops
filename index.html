@@ -1,56 +1,51 @@
-async function fetchSite(site) {
-  const weatherParams = new URLSearchParams({
-    latitude: String(site.lat),
-    longitude: String(site.lon),
-    current: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-    hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-    forecast_days: "2",
-    timezone: "America/New_York",
-    wind_speed_unit: "ms"
-  });
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Space Coast Water Ops</title>
 
-  const marineParams = new URLSearchParams({
-    latitude: String(site.lat),
-    longitude: String(site.lon),
-    current: "wave_height,wave_period,wave_direction",
-    hourly: "wave_height,wave_period,wave_direction",
-    forecast_days: "2",
-    timezone: "America/New_York"
-  });
-
-  const wUrl =
-    "https://api.open-meteo.com/v1/forecast?" + weatherParams.toString();
-
-  const mUrl =
-    "https://marine-api.open-meteo.com/v1/marine?" + marineParams.toString();
-
-  console.log("Weather URL:", wUrl);
-  console.log("Marine URL:", mUrl);
-
-  const [wr, mr] = await Promise.all([
-    fetch(wUrl),
-    fetch(mUrl)
-  ]);
-
-  if (!wr.ok) {
-    const details = await wr.text();
-    throw new Error(
-      `${site.name} weather request failed: HTTP ${wr.status} — ${details}`
-    );
-  }
-
-  if (!mr.ok) {
-    const details = await mr.text();
-    throw new Error(
-      `${site.name} marine request failed: HTTP ${mr.status} — ${details}`
-    );
-  }
-
-  return {
-    weather: await wr.json(),
-    marine: await mr.json(),
-    site
-  };
-}
-
+  <style>
     body {
+      margin: 0;
+      padding: 24px;
+      background: #071624;
+      color: #f1f6fa;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 6px;
+    }
+
+    .subtitle,
+    #status {
+      color: #b7cad8;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 24px 0;
+    }
+
+    select,
+    button {
+      min-height: 42px;
+      padding: 0 12px;
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    select {
+      min-width: 220px;
+      color: white;
+      border: 1px solid #41657c;
+      background: #102b40;
+    }
