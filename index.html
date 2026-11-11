@@ -3,50 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Space Coast Dashboard - Debug</title>
+  <title>Space Coast Small Craft Go/No-Go Dashboard</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    body { background: #0f172a; color: #e2e8f0; font-family: Arial, sans-serif; margin:0; padding:20px; }
-    .panel { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-    #status { padding: 15px; background: #334155; border-radius: 8px; font-size: 1rem; margin: 10px 0; white-space: pre-wrap; }
+    body { background:#0f172a; color:#e2e8f0; font-family: system-ui, sans-serif; margin:0; padding:15px; }
+    .panel { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px; margin-bottom:20px; }
+    h1 { color:#38bdf8; margin:0 0 10px 0; }
+    button { background:#2563eb; color:white; border:none; padding:12px 24px; border-radius:8px; cursor:pointer; font-size:16px; }
+    #status { padding:12px; background:#334155; border-radius:8px; margin:10px 0; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:12px; text-align:center; border-bottom:1px solid #475569; }
+    .red { background:rgba(239,68,68,0.3); }
+    .yellow { background:rgba(245,158,11,0.3); }
+    .green { background:rgba(16,185,129,0.3); }
   </style>
 </head>
 <body>
 
   <div class="panel">
-    <h1>Space Coast Dashboard - Debug Mode</h1>
-    <button onclick="loadData()" style="padding:12px 20px; font-size:16px;">Run Data Test</button>
+    <h1>⚓ Space Coast Small Craft Go/No-Go Dashboard</h1>
+    <button onclick="loadData()">Refresh Data</button>
+    <div id="status">Loading data from Open-Meteo...</div>
   </div>
 
   <div class="panel">
-    <h2>Results</h2>
-    <div id="status">Click the button above to test data loading...</div>
+    <h2>48-Hour Wind & Wave</h2>
+    <canvas id="chart" height="180"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>Hourly Table</h2>
+    <table id="table">
+      <thead><tr><th>Time</th><th>Wind</th><th>Gust</th><th>Wave</th><th>Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
   </div>
 
   <script>
     async function loadData() {
       const status = document.getElementById("status");
-      status.innerHTML = "Starting test...\n";
-
-      const url = "https://marine-api.open-meteo.com/v1/marine?latitude=28.40&longitude=-80.53&hourly=wave_height,wind_speed_10m,wind_gusts_10m&timezone=America/New_York";
+      status.textContent = "Connecting to weather service...";
 
       try {
-        status.innerHTML += "Fetching data from Open-Meteo...\n";
-        const res = await fetch(url);
-        status.innerHTML += `Status: ${res.status} ${res.statusText}\n`;
+        const response = await fetch("https://marine-api.open-meteo.com/v1/marine?latitude=28.4&longitude=-80.53&hourly=wave_height,wind_speed_10m,wind_gusts_10m&timezone=America/New_York");
+        
+        status.textContent = `Response: ${response.status} ${response.statusText}`;
 
-        const data = await res.json();
-        status.innerHTML += `✅ Success! Received ${data.hourly.time.length} hours of data.\n\n`;
-        status.innerHTML += `First time: ${data.hourly.time[0]}\n`;
-        status.innerHTML += `First wind: ${data.hourly.wind_speed_10m[0]} m/s\n`;
-        status.innerHTML += `First wave: ${data.hourly.wave_height[0]} meters\n\n`;
-        status.innerHTML += "✅ Data is flowing correctly!\nYou can now replace this with the full dashboard.";
+        const data = await response.json();
 
-      } catch (err) {
-        status.innerHTML += `❌ ERROR: ${err.message}`;
-        console.error(err);
+        const times = data.hourly.time;
+        const wind = data.hourly.wind_speed_10m;
+        const gust = data.hourly.wind_gusts_10m;
+        const wave = data.hourly.wave_height;
+
+        let rows = "";
+        for (let i = 0; i < 36; i++) {
+          let s = (wave[i] >= 4 || gust[i] >= 25) ? "red" : (wave[i] >= 2.5 || gust[i] >= 20) ? "yellow" : "green";
+          rows += `<tr class="${s}">
+            <td>${times[i].slice(11,16)}</td>
+            <td>${Math.round(wind[i])}</td>
+            <td>${Math.round(gust[i])}</td>
+            <td>${wave[i].toFixed(1)}</td>
+            <td><b>${s.toUpperCase()}</b></td>
+          </tr>`;
+        }
+        document.querySelector("#table tbody").innerHTML = rows;
+
+        new Chart(document.getElementById("chart"), {
+          type: 'line',
+          data: {
+            labels: times.slice(0,36).map(t => t.slice(11,16)),
+            datasets: [
+              { label: 'Wind (mph)', data: wind.slice(0,36), borderColor: '#60a5fa' },
+              { label: 'Wave Height (ft)', data: wave.slice(0,36), borderColor: '#fbbf24' }
+            ]
+          },
+          options: { responsive: true }
+        });
+
+        status.innerHTML = "✅ Data loaded successfully!";
+
+      } catch (e) {
+        console.error(e);
+        status.innerHTML = `❌ ERROR: ${e.message}<br><br>Try clicking "Refresh Data" again.`;
       }
     }
+
+    window.onload = loadData;
   </script>
 </body>
 </html>
