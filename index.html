@@ -1,358 +1,76 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Space Coast Small Craft Go/No-Go Dashboard</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f172a; --card: #1e293b; --alt: #0b1120; --text: #f8fafc; --muted: #94a3b8;
-      --border: #334155; --accent: #38bdf8; --gold: #facc15;
-      --red-bg: rgba(239,68,68,0.22); --red: #ef4444;
-      --yellow-bg: rgba(245,158,11,0.20); --yellow: #f59e0b;
-      --green-bg: rgba(16,185,129,0.16); --green: #10b981;
+try {
+  const settled = await Promise.allSettled(SITES.map(fetchSite));
+
+  cache = {};
+  const failures = [];
+
+  settled.forEach((result, index) => {
+    const site = SITES[index];
+
+    if (result.status === 'fulfilled') {
+      cache[site.id] = result.value;
+    } else {
+      console.error(`Could not load ${site.name}:`, result.reason);
+      failures.push(`${site.short}: ${result.reason.message}`);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 14px; max-width: 1100px; margin: 0 auto; line-height: 1.5; }
-    header, .card, .buoy, .live, .summary {
-      background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px;
-    }
-    header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    h1 { font-size: 1.25rem; }
-    .sub { color: var(--muted); font-size: 0.85rem; }
-    button { background: #2563eb; color: #fff; border: none; border-radius: 8px; padding: 9px 16px; font-weight: 600; cursor: pointer; }
-    .buoy { border: 2px solid var(--gold); background: linear-gradient(135deg, #1e293b, #172554); }
-    .buoy-title { color: var(--gold); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; }
-    .grid5 { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; }
-    .metric { background: var(--alt); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-    .metric-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; font-weight: 600; }
-    .metric-value { font-size: 1.2rem; font-weight: 700; margin-top: 2px; }
-    .tabs { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
-    .tab { background: var(--card); border: 2px solid var(--border); border-radius: 10px; padding: 12px; cursor: pointer; }
-    .tab.active { border-color: var(--accent); background: #1e3a5f; }
-    .tab-name { font-weight: 700; }
-    .tab-meta { font-size: 0.75rem; color: var(--muted); }
-    .tab-now { font-size: 0.85rem; margin-top: 6px; }
-    #map { height: 380px; border-radius: 8px; }
-    .summary.green { border-color: var(--green); background: var(--green-bg); }
-    .summary.yellow { border-color: var(--yellow); background: var(--yellow-bg); }
-    .summary.red { border-color: var(--red); background: var(--red-bg); }
-    .legend { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; font-size: 0.8rem; }
-    .pill { padding: 4px 12px; border-radius: 999px; border: 1px solid; font-weight: 600; }
-    .pill-green { background: var(--green-bg); border-color: var(--green); color: #6ee7b7; }
-    .pill-yellow { background: var(--yellow-bg); border-color: var(--yellow); color: #fcd34d; }
-    .pill-red { background: var(--red-bg); border-color: var(--red); color: #fca5a5; }
-    #chart-wrap { height: 280px; }
-    .table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
-    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 600px; }
-    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); }
-    th { background: var(--alt); color: var(--muted); font-size: 0.75rem; text-transform: uppercase; }
-    tr.row-green { background: var(--green-bg); border-left: 4px solid var(--green); }
-    tr.row-yellow { background: var(--yellow-bg); border-left: 4px solid var(--yellow); }
-    tr.row-red { background: var(--red-bg); border-left: 4px solid var(--red); }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
-    .badge-green { background: #10b981; color: #000; }
-    .badge-yellow { background: #f59e0b; color: #000; }
-    .badge-red { background: #ef4444; color: #fff; }
-    @media (max-width: 700px) {
-      .grid5, .tabs { grid-template-columns: 1fr 1fr; }
-      #map { height: 300px; }
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <div>
-      <h1>⚓ Space Coast Live & 48-Hr Small Craft Go/No-Go Dashboard</h1>
-      <div class="sub">Port Canaveral • Banana River • Indian River • NOAA NDBC Buoy 41113 | US Eastern Time</div>
-    </div>
-    <div style="text-align:right">
-      <div class="sub" id="lastUpdated">Last updated: —</div>
-      <button id="btn" onclick="loadAll()">↻ Refresh All</button>
-    </div>
-  </header>
+  });
 
-  <div class="buoy">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-      <div>
-        <div class="buoy-title">🛟 NOAA NDBC Buoy 41113 — Cape Canaveral Nearshore (28.400°N, 80.533°W)</div>
-        <div class="sub" id="buoyTime">Using model data (NDBC direct feed often blocked by CORS)</div>
-      </div>
-      <a href="https://www.ndbc.noaa.gov/station_page.php?station=41113" target="_blank" style="color:#93c5fd;font-size:0.85rem">Open Official NDBC Page ↗</a>
-    </div>
-    <div class="grid5">
-      <div class="metric"><div class="metric-label">Significant Wave Ht</div><div class="metric-value" id="b-wvht">—</div><div class="sub">ft</div></div>
-      <div class="metric"><div class="metric-label">Dominant Period</div><div class="metric-value" id="b-dpd">—</div><div class="sub">sec</div></div>
-      <div class="metric"><div class="metric-label">Mean Wave Dir</div><div class="metric-value" id="b-mwd">—</div><div class="sub">° True</div></div>
-      <div class="metric"><div class="metric-label">Water Temp</div><div class="metric-value" id="b-wtmp">—</div><div class="sub">°F</div></div>
-      <div class="metric"><div class="metric-label">Data Age</div><div class="metric-value" id="b-age">—</div><div class="sub">min</div></div>
-    </div>
-  </div>
+  if (Object.keys(cache).length === 0) {
+    throw new Error(
+      'No weather or marine data could be loaded. Open the browser Console (F12) for the request error.'
+    );
+  }
 
-  <div class="tabs" id="tabs"></div>
+  if (!cache[current]) {
+    current = Object.keys(cache)[0];
+  }
 
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <h2 style="font-size:1rem">📍 Operational Area Map</h2>
-      <div class="sub">Layer control top-right • Gold = 41113</div>
-    </div>
-    <div id="map"></div>
-  </div>
+  SITES.forEach(s => {
+    if (cache[s.id]) {
+      const d = cache[s.id];
+      const wind = msToKt(d.weather.current.wind_speed_10m);
+      const wave = mToFt(d.marine.current.wave_height);
+      const { s: st } = getStatus(
+        wind,
+        msToKt(d.weather.current.wind_gusts_10m),
+        wave,
+        s.type === 'ocean'
+      );
 
-  <div class="live">
-    <div style="display:flex;justify-content:space-between;margin-bottom:10px">
-      <div style="font-weight:700;color:var(--accent)" id="liveTitle">Live Conditions</div>
-      <div class="sub">Source: Open-Meteo Marine + Weather</div>
-    </div>
-    <div class="grid5">
-      <div class="metric"><div class="metric-label">Wind</div><div class="metric-value" id="l-wind">—</div><div class="sub" id="l-dir">kt</div></div>
-      <div class="metric"><div class="metric-label">Gusts</div><div class="metric-value" id="l-gust">—</div><div class="sub">kt</div></div>
-      <div class="metric"><div class="metric-label">Sig. Wave Ht</div><div class="metric-value" id="l-wave">—</div><div class="sub">ft</div></div>
-      <div class="metric"><div class="metric-label">Wave Period</div><div class="metric-value" id="l-period">—</div><div class="sub">sec</div></div>
-      <div class="metric"><div class="metric-label">Status Now</div><div class="metric-value" id="l-status">—</div><div class="sub" id="l-reason">Go/No-Go</div></div>
-    </div>
-  </div>
-
-  <div class="summary" id="summary">
-    <div class="sub" style="text-transform:uppercase;letter-spacing:0.05em;font-weight:700;margin-bottom:4px">48-Hour Outlook Summary</div>
-    <div style="font-size:1.1rem;font-weight:700" id="sumMain">Loading...</div>
-    <div class="sub" id="sumDetail"></div>
-  </div>
-
-  <div class="legend">
-    <span class="pill pill-green">🟢 GREEN — Favorable for most small craft</span>
-    <span class="pill pill-yellow">🟡 YELLOW — Caution / Marginal</span>
-    <span class="pill pill-red">🔴 RED — No-Go / Hazardous for small craft</span>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <h2 style="font-size:1rem">📈 48-Hour Wind & Wave Forecast</h2>
-      <div class="sub">Solid = Wind (kt) • Dashed = Wave Height (ft)</div>
-    </div>
-    <div id="chart-wrap"><canvas id="chart"></canvas></div>
-  </div>
-
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-      <h2 style="font-size:1rem">🗓️ Hourly Go/No-Go Table (Next 48 Hours)</h2>
-      <div class="sub">All times US Eastern • Color-coded by thresholds</div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Time (ET)</th>
-            <th>Wind (kt)</th>
-            <th>Gust (kt)</th>
-            <th>Wave (ft)</th>
-            <th>Period</th>
-            <th>Status</th>
-            <th>Notes</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"><tr><td colspan="7" style="text-align:center;color:#94a3b8">Loading...</td></tr></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="sub" style="margin-top:18px;padding-top:12px;border-top:1px solid var(--border)">
-    <strong>BETA / DISCLAIMER:</strong> Unofficial decision-support tool. Data from Open-Meteo models. Always cross-check official NWS Melbourne marine forecasts. Use at your own risk.
-  </div>
-
-  <script>
-    const SITES = [
-      { id:'port', name:'Port Canaveral / Nearshore', short:'Port Canaveral', lat:28.410, lon:-80.590, type:'ocean' },
-      { id:'banana', name:'Banana River', short:'Banana River', lat:28.375, lon:-80.630, type:'river' },
-      { id:'indian', name:'Indian River Lagoon', short:'Indian River', lat:28.420, lon:-80.730, type:'river' }
-    ];
-    let current = 'port', map = null, chart = null, cache = {};
-
-    function msToKt(v){ return v==null?null:v*1.943844; }
-    function mToFt(v){ return v==null?null:v*3.28084; }
-    function degToCompass(d){
-      if(d==null||isNaN(d)) return '';
-      const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-      return dirs[Math.round(d/22.5)%16];
-    }
-    function formatHour(iso){
-      return new Date(iso).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',hour12:true});
-    }
-    function getStatus(wind,gust,wave,isOcean){
-      wind=wind||0; gust=gust||0; wave=wave||0;
-      if(isOcean){
-        if(wave>=4||gust>=25||wind>=20) return {s:'red',n:wave>=4?'Waves ≥4 ft':gust>=25?'Gusts ≥25 kt':'Wind ≥20 kt'};
-        if(wave>=2.5||gust>=20||wind>=15) return {s:'yellow',n:wave>=2.5?'Waves 2.5–4 ft':'Elevated wind/gust'};
-        return {s:'green',n:'Favorable'};
-      } else {
-        if(gust>=25||wind>=20) return {s:'red',n:gust>=25?'Gusts ≥25 kt':'Wind ≥20 kt'};
-        if(gust>=18||wind>=15) return {s:'yellow',n:'Marginal wind'};
-        return {s:'green',n:'Favorable'};
+      const tab = document.getElementById('now-' + s.id);
+      if (tab) {
+        tab.textContent =
+          (st === 'red' ? '🔴' : st === 'yellow' ? '🟡' : '🟢') +
+          ' ' + (wind != null ? wind.toFixed(0) : '—') +
+          ' kt • ' + (wave != null ? wave.toFixed(1) : '—') + ' ft';
       }
     }
+  });
 
-    function renderTabs(){
-      const el=document.getElementById('tabs');
-      el.innerHTML='';
-      SITES.forEach(s=>{
-        const d=document.createElement('div');
-        d.className='tab'+(s.id===current?' active':'');
-        d.onclick=()=>select(s.id);
-        d.innerHTML=`<div class="tab-name">${s.name}</div>
-          <div class="tab-meta">${s.lat.toFixed(3)}°N, ${Math.abs(s.lon).toFixed(3)}°W • ${s.type}</div>
-          <div class="tab-now" id="now-${s.id}">—</div>`;
-        el.appendChild(d);
-      });
-    }
-    function select(id){
-      current=id; renderTabs();
-      if(cache[id]){ updateLive(cache[id],id); renderTable(cache[id],id); updateSummary(cache[id],id); renderChart(cache[id]); }
-      const s=SITES.find(x=>x.id===id);
-      if(s&&map) map.flyTo([s.lat,s.lon],12,{duration:0.7});
-    }
+  const cur = cache[current];
+  updateLive(cur, current);
+  renderTable(cur, current);
+  updateSummary(cur, current);
+  renderChart(cur);
 
-    async function fetchSite(site){
-      const wUrl=`https://api.open-meteo.com/v1/forecast?latitude=${site.lat}&longitude=${site.lon}&current=wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m&forecast_days=2&timezone=America%2FNew_York&wind_speed_unit=ms`;
-      const mUrl=`https://marine-api.open-meteo.com/v1/marine?latitude=${site.lat}&longitude=${site.lon}&current=wave_height,wave_period,wave_direction&hourly=wave_height,wave_period,wave_direction&forecast_days=2&timezone=America%2FNew_York`;
-      const [wr,mr]=await Promise.all([fetch(wUrl),fetch(mUrl)]);
-      if(!wr.ok||!mr.ok) throw new Error('API error');
-      return {weather:await wr.json(), marine:await mr.json(), site};
-    }
+  if (!map) initMap();
 
-    function updateLive(data,id){
-      const site=SITES.find(s=>s.id===id);
-      const isOcean=site.type==='ocean';
-      document.getElementById('liveTitle').textContent='Live Conditions — '+site.name;
-      const w=data.weather.current, m=data.marine.current;
-      const wind=msToKt(w.wind_speed_10m), gust=msToKt(w.wind_gusts_10m), wave=mToFt(m.wave_height);
-      document.getElementById('l-wind').textContent=wind!=null?wind.toFixed(1):'—';
-      document.getElementById('l-dir').textContent=w.wind_direction_10m!=null?Math.round(w.wind_direction_10m)+'° '+degToCompass(w.wind_direction_10m):'kt';
-      document.getElementById('l-gust').textContent=gust!=null?gust.toFixed(1):'—';
-      document.getElementById('l-wave').textContent=wave!=null?wave.toFixed(1):(isOcean?'—':'N/A');
-      document.getElementById('l-period').textContent=m.wave_period!=null?m.wave_period.toFixed(1):'—';
-      const {s,n}=getStatus(wind,gust,wave,isOcean);
-      const el=document.getElementById('l-status');
-      el.textContent=s.toUpperCase();
-      el.style.color=s==='red'?'#fca5a5':s==='yellow'?'#fcd34d':'#6ee7b7';
-      document.getElementById('l-reason').textContent=n;
-      const tab=document.getElementById('now-'+id);
-      if(tab) tab.textContent=(s==='red'?'🔴':s==='yellow'?'🟡':'🟢')+' '+(wind!=null?wind.toFixed(0):'—')+' kt  •  '+(wave!=null?wave.toFixed(1):'—')+' ft';
-    }
+  document.getElementById('lastUpdated').textContent =
+    'Last updated: ' +
+    new Date().toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      timeStyle: 'medium'
+    }) + ' ET';
 
-    function updateSummary(data,id){
-      const site=SITES.find(s=>s.id===id); const isOcean=site.type==='ocean';
-      const times=data.weather.hourly.time, winds=data.weather.hourly.wind_speed_10m, gusts=data.weather.hourly.wind_gusts_10m, waves=data.marine.hourly.wave_height||[];
-      let g=0,y=0,r=0,firstRed=null;
-      for(let i=0;i<times.length;i++){
-        const {s}=getStatus(msToKt(winds[i]),msToKt(gusts[i]),mToFt(waves[i]),isOcean);
-        if(s==='red'){r++; if(!firstRed) firstRed=times[i];}
-        else if(s==='yellow') y++; else g++;
-      }
-      const card=document.getElementById('summary');
-      card.className='summary';
-      if(r>6){card.classList.add('red'); document.getElementById('sumMain').textContent=`⚠️ ${r} hours of RED conditions`; document.getElementById('sumDetail').textContent=`${g} green, ${y} yellow remaining.`;}
-      else if(r>0||y>12){card.classList.add('yellow'); document.getElementById('sumMain').textContent=`Caution — elevated conditions`; document.getElementById('sumDetail').textContent=`${g} green, ${y} yellow, ${r} red.`;}
-      else{card.classList.add('green'); document.getElementById('sumMain').textContent=`✅ Overall favorable next 48 hours`; document.getElementById('sumDetail').textContent=`${g} green hours, ${y} yellow. Good window for small craft.`;}
-    }
+  const m = cur.marine.current;
+  document.getElementById('b-wvht').textContent =
+    m.wave_height != null ? mToFt(m.wave_height).toFixed(1) : '—';
+  document.getElementById('b-dpd').textContent =
+    m.wave_period != null ? m.wave_period.toFixed(1) : '—';
+  document.getElementById('b-mwd').textContent =
+    m.wave_direction != null ? Math.round(m.wave_direction) + '°' : '—';
 
-    function renderTable(data,id){
-      const site=SITES.find(s=>s.id===id); const isOcean=site.type==='ocean';
-      const times=data.weather.hourly.time, winds=data.weather.hourly.wind_speed_10m, gusts=data.weather.hourly.wind_gusts_10m, dirs=data.weather.hourly.wind_direction_10m;
-      const waves=data.marine.hourly.wave_height||[], periods=data.marine.hourly.wave_period||[];
-      let html='';
-      for(let i=0;i<Math.min(times.length,48);i++){
-        const wind=msToKt(winds[i]), gust=msToKt(gusts[i]), wave=mToFt(waves[i]), p=periods[i];
-        const {s,n}=getStatus(wind,gust,wave,isOcean);
-        html+=`<tr class="row-${s}">
-          <td>${formatHour(times[i])}</td>
-          <td>${wind!=null?wind.toFixed(0):'—'} ${dirs[i]!=null?degToCompass(dirs[i]):''}</td>
-          <td>${gust!=null?gust.toFixed(0):'—'}</td>
-          <td>${wave!=null?wave.toFixed(1):(isOcean?'—':'—')}</td>
-          <td>${p!=null?p.toFixed(0):'—'}</td>
-          <td><span class="badge badge-${s}">${s}</span></td>
-          <td>${n}</td>
-        </tr>`;
-      }
-      document.getElementById('tbody').innerHTML=html||'<tr><td colspan="7">No data</td></tr>';
-    }
-
-    function renderChart(data){
-      const times=data.weather.hourly.time.slice(0,48);
-      const labels=times.map(t=>new Date(t).toLocaleString('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',hour12:true}));
-      const wind=data.weather.hourly.wind_speed_10m.slice(0,48).map(msToKt);
-      const wave=(data.marine.hourly.wave_height||[]).slice(0,48).map(mToFt);
-      const ctx=document.getElementById('chart').getContext('2d');
-      if(chart) chart.destroy();
-      chart=new Chart(ctx,{
-        type:'line',
-        data:{labels,datasets:[
-          {label:'Wind (kt)',data:wind,borderColor:'#38bdf8',backgroundColor:'rgba(56,189,248,0.12)',tension:0.3,yAxisID:'y',borderWidth:2.5,pointRadius:0},
-          {label:'Wave Ht (ft)',data:wave,borderColor:'#facc15',backgroundColor:'rgba(250,204,21,0.08)',tension:0.3,yAxisID:'y1',borderDash:[6,4],borderWidth:2.5,pointRadius:0}
-        ]},
-        options:{
-          responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-          plugins:{legend:{labels:{color:'#e2e8f0'}},tooltip:{callbacks:{label:c=>{const v=c.parsed.y;return c.dataset.label+': '+(v!=null?v.toFixed(1):'—');}}}},
-          scales:{
-            x:{ticks:{color:'#94a3b8',maxTicksLimit:10,maxRotation:45},grid:{color:'rgba(51,65,85,0.5)'}},
-            y:{position:'left',title:{display:true,text:'Wind (kt)',color:'#38bdf8'},ticks:{color:'#94a3b8'},grid:{color:'rgba(51,65,85,0.5)'},suggestedMin:0},
-            y1:{position:'right',title:{display:true,text:'Wave (ft)',color:'#facc15'},ticks:{color:'#94a3b8'},grid:{drawOnChartArea:false},suggestedMin:0}
-          }
-        }
-      });
-    }
-
-    function initMap(){
-      map=L.map('map').setView([28.40,-80.60],11);
-      const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'© Esri',maxZoom:18});
-      const osm=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19});
-      sat.addTo(map);
-      L.control.layers({'🛰️ Satellite':sat,'🗺️ Street':osm},null,{position:'topright',collapsed:false}).addTo(map);
-      L.marker([28.400,-80.533]).addTo(map).bindPopup('<b>NDBC 41113</b><br>Cape Canaveral Nearshore');
-      SITES.forEach(s=>L.marker([s.lat,s.lon]).addTo(map).bindPopup(`<b>${s.name}</b>`));
-    }
-
-    async function loadAll(){
-      const btn=document.getElementById('btn');
-      btn.disabled=true; btn.textContent='↻ Loading...';
-      try{
-        const results=await Promise.all(SITES.map(s=>fetchSite(s)));
-        cache={};
-        results.forEach(r=>cache[r.site.id]=r);
-        SITES.forEach(s=>{
-          if(cache[s.id]){
-            const d=cache[s.id];
-            const wind=msToKt(d.weather.current.wind_speed_10m);
-            const wave=mToFt(d.marine.current.wave_height);
-            const {s:st}=getStatus(wind,msToKt(d.weather.current.wind_gusts_10m),wave,s.type==='ocean');
-            const tab=document.getElementById('now-'+s.id);
-            if(tab) tab.textContent=(st==='red'?'🔴':st==='yellow'?'🟡':'🟢')+' '+(wind!=null?wind.toFixed(0):'—')+' kt  •  '+(wave!=null?wave.toFixed(1):'—')+' ft';
-          }
-        });
-        const cur=cache[current];
-        if(cur){ updateLive(cur,current); renderTable(cur,current); updateSummary(cur,current); renderChart(cur); }
-        if(!map) initMap();
-        document.getElementById('lastUpdated').textContent='Last updated: '+new Date().toLocaleString('en-US',{timeZone:'America/New_York',timeStyle:'medium'})+' ET';
-        // Simple buoy panel from current site model
-        const m=cur.marine.current;
-        document.getElementById('b-wvht').textContent=m.wave_height!=null?mToFt(m.wave_height).toFixed(1):'—';
-        document.getElementById('b-dpd').textContent=m.wave_period!=null?m.wave_period.toFixed(1):'—';
-        document.getElementById('b-mwd').textContent=m.wave_direction!=null?Math.round(m.wave_direction)+'°':'—';
-      }catch(e){
-        console.error(e);
-        alert('Data load failed: '+e.message);
-      }finally{
-        btn.disabled=false; btn.textContent='↻ Refresh All';
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded',()=>{
-      renderTabs();
-      loadAll();
-      setInterval(loadAll,20*60*1000);
-    });
-  </script>
-</body>
-</html>
+  document.getElementById('buoyTime').textContent =
+    failures.length
+      ? `Partial data loaded. ${failures.join(' | ')}`
+      : 'Model data loaded from Open-Meteo.';
