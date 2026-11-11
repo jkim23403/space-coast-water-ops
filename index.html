@@ -3,18 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Space Coast Water Ops</title>
+  <title>Space Coast Small Craft Go / No-Go</title>
 
   <style>
     :root {
-      --background: #071624;
-      --panel: #102b40;
-      --border: #31566d;
+      --navy: #071a2f;
+      --navy-2: #0d2944;
+      --panel: #102f4d;
+      --panel-light: #173f61;
+      --line: #315c7d;
       --text: #f4f8fb;
-      --muted: #b7cad8;
-      --accent: #4bc5e8;
-      --error-bg: #562121;
-      --error-border: #ff7777;
+      --muted: #abc2d3;
+      --blue: #36bdf1;
+      --green: #35c76f;
+      --yellow: #f2bb3b;
+      --red: #e85858;
     }
 
     * {
@@ -23,54 +26,102 @@
 
     body {
       margin: 0;
-      padding: 24px;
       color: var(--text);
-      background: var(--background);
+      background:
+        radial-gradient(circle at 90% 0%, #174c72 0, transparent 32rem),
+        var(--navy);
       font-family: Arial, Helvetica, sans-serif;
     }
 
-    main {
-      max-width: 950px;
+    header {
+      padding: 28px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(4, 18, 33, 0.9);
+    }
+
+    main,
+    .header-content {
+      width: min(1280px, calc(100% - 32px));
       margin: 0 auto;
     }
 
     h1 {
-      margin-bottom: 6px;
+      margin: 0;
+      font-size: clamp(1.55rem, 4vw, 2.25rem);
+    }
+
+    h2 {
+      margin: 0 0 16px;
+      font-size: 1.2rem;
+    }
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
     }
 
     .subtitle,
+    .muted,
     #status {
       color: var(--muted);
+    }
+
+    .subtitle {
+      margin: 8px 0 0;
+    }
+
+    main {
+      padding: 24px 0 48px;
     }
 
     .controls {
       display: flex;
       flex-wrap: wrap;
+      align-items: end;
       gap: 12px;
-      margin: 24px 0;
+      padding: 16px;
+      margin-bottom: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(16, 47, 77, 0.88);
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 0.83rem;
+      font-weight: bold;
     }
 
     select,
     button {
-      min-height: 44px;
-      padding: 0 14px;
+      min-height: 42px;
+      padding: 0 12px;
       border-radius: 7px;
-      font-size: 16px;
+      font: inherit;
     }
 
     select {
-      min-width: 220px;
+      min-width: 260px;
       color: var(--text);
-      border: 1px solid var(--border);
-      background: var(--panel);
+      border: 1px solid var(--line);
+      background: var(--navy);
     }
 
     button {
-      color: #041d29;
+      color: #032032;
       cursor: pointer;
       border: 0;
-      background: var(--accent);
+      background: var(--blue);
       font-weight: bold;
+    }
+
+    button:hover {
+      filter: brightness(1.08);
     }
 
     button:disabled {
@@ -78,165 +129,453 @@
       opacity: 0.65;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
-      margin-top: 20px;
+    #status {
+      min-height: 22px;
+      margin: 0 0 18px;
     }
 
-    .card {
-      padding: 18px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: var(--panel);
-    }
-
-    .card h2 {
-      margin-top: 0;
-    }
-
-    .metric {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 13px 0;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .metric:last-child {
-      border-bottom: 0;
-    }
-
-    .metric-label {
-      color: var(--muted);
+    .hidden {
+      display: none !important;
     }
 
     .error {
       padding: 14px;
-      margin-top: 16px;
-      color: #ffe7e7;
-      border: 1px solid var(--error-border);
+      margin-bottom: 18px;
+      color: #ffe9e9;
+      border: 1px solid var(--red);
       border-radius: 8px;
-      background: var(--error-bg);
+      background: rgba(146, 35, 35, 0.7);
       white-space: pre-wrap;
     }
 
-    .hidden {
-      display: none;
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(16, 47, 77, 0.92);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+    }
+
+    .summary-card {
+      grid-column: span 12;
+    }
+
+    .live-card {
+      grid-column: span 7;
+    }
+
+    .rules-card {
+      grid-column: span 5;
+    }
+
+    .chart-card,
+    .table-card {
+      grid-column: span 12;
+    }
+
+    .summary-grid,
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-metric,
+    .metric {
+      padding: 14px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: bold;
+    }
+
+    .metric-value {
+      display: block;
+      margin-top: 7px;
+      font-size: clamp(1.1rem, 2.5vw, 1.5rem);
+      font-weight: bold;
+    }
+
+    .site-name {
+      margin: -6px 0 16px;
+      color: var(--muted);
+    }
+
+    .status-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 15px;
+      margin-bottom: 16px;
+      border-radius: 8px;
+    }
+
+    .status-panel small {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .status-panel strong {
+      font-size: 1.3rem;
+    }
+
+    .green-bg {
+      background: rgba(53, 199, 111, 0.18);
+      border: 1px solid var(--green);
+    }
+
+    .yellow-bg {
+      background: rgba(242, 187, 59, 0.16);
+      border: 1px solid var(--yellow);
+    }
+
+    .red-bg {
+      background: rgba(232, 88, 88, 0.16);
+      border: 1px solid var(--red);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #081622;
+      font-size: 0.78rem;
+      font-weight: bold;
+    }
+
+    .green {
+      background: var(--green);
+    }
+
+    .yellow {
+      background: var(--yellow);
+    }
+
+    .red {
+      color: white;
+      background: var(--red);
+    }
+
+    .rules {
+      display: grid;
+      gap: 10px;
+    }
+
+    .rule {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .rule .badge {
+      min-width: 58px;
+      text-align: center;
+    }
+
+    .chart-wrap {
+      overflow-x: auto;
+    }
+
+    #forecastChart {
+      display: block;
+      width: 100%;
+      min-width: 760px;
+      height: 300px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 940px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 11px 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(171, 194, 211, 0.18);
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.76rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.045);
     }
 
     footer {
-      margin-top: 28px;
+      padding-top: 18px;
       color: var(--muted);
-      font-size: 14px;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 880px) {
+      .live-card,
+      .rules-card {
+        grid-column: span 12;
+      }
+
+      .summary-grid,
+      .metrics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 540px) {
+      body {
+        font-size: 15px;
+      }
+
+      .summary-grid,
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+
+      select,
+      button {
+        width: 100%;
+      }
     }
   </style>
 </head>
 
 <body>
+  <header>
+    <div class="header-content">
+      <h1>Space Coast Live &amp; 48-Hr Small Craft Go / No-Go</h1>
+      <p class="subtitle">
+        Wind and marine forecast decision aid for nearshore small-craft operations.
+      </p>
+    </div>
+  </header>
+
   <main>
-    <h1>Space Coast Water Ops</h1>
-    <p class="subtitle">Current wind and marine conditions.</p>
-
     <section class="controls">
-      <select id="siteSelect">
-        <option value="cocoaBeach">Cocoa Beach</option>
-        <option value="capeCanaveral">Cape Canaveral</option>
-        <option value="sebastianInlet">Sebastian Inlet</option>
-      </select>
+      <div class="field">
+        <label for="siteSelect">Operational Area</label>
+        <select id="siteSelect">
+          <option value="portCanaveral">Port Canaveral / Nearshore</option>
+          <option value="bananaRiver">Banana River</option>
+          <option value="indianRiver">Indian River Lagoon</option>
+        </select>
+      </div>
 
-      <button id="refreshButton" type="button">
-        Refresh Conditions
-      </button>
+      <button id="refreshButton" type="button">Refresh Conditions</button>
     </section>
 
-    <p id="status">Loading conditions...</p>
-
+    <p id="status">Loading forecast data...</p>
     <div id="errorBox" class="error hidden"></div>
 
-    <section id="results" class="grid hidden">
-      <article class="card">
-        <h2>Current Wind</h2>
+    <section id="dashboard" class="grid hidden">
+      <article class="card summary-card">
+        <h2>48-Hour Outlook Summary</h2>
 
-        <div class="metric">
-          <span class="metric-label">Wind Speed</span>
-          <strong id="windSpeed">--</strong>
-        </div>
+        <div class="summary-grid">
+          <div class="summary-metric">
+            <span class="metric-label">Overall Outlook</span>
+            <span id="overallOutlook" class="metric-value">--</span>
+          </div>
 
-        <div class="metric">
-          <span class="metric-label">Wind Gusts</span>
-          <strong id="windGusts">--</strong>
-        </div>
+          <div class="summary-metric">
+            <span class="metric-label">Favorable Hours</span>
+            <span id="greenHours" class="metric-value">--</span>
+          </div>
 
-        <div class="metric">
-          <span class="metric-label">Wind Direction</span>
-          <strong id="windDirection">--</strong>
+          <div class="summary-metric">
+            <span class="metric-label">Caution Hours</span>
+            <span id="yellowHours" class="metric-value">--</span>
+          </div>
+
+          <div class="summary-metric">
+            <span class="metric-label">No-Go Hours</span>
+            <span id="redHours" class="metric-value">--</span>
+          </div>
         </div>
       </article>
 
-      <article class="card">
-        <h2>Current Marine Conditions</h2>
+      <article class="card live-card">
+        <h2>Live Conditions</h2>
+        <p id="selectedSiteName" class="site-name">--</p>
 
-        <div class="metric">
-          <span class="metric-label">Wave Height</span>
-          <strong id="waveHeight">--</strong>
+        <div id="currentStatusPanel" class="status-panel">
+          <div>
+            <small>Current Status</small>
+            <strong id="currentStatus">--</strong>
+          </div>
+          <span id="currentBadge" class="badge">--</span>
         </div>
 
-        <div class="metric">
-          <span class="metric-label">Wave Period</span>
-          <strong id="wavePeriod">--</strong>
+        <div class="metrics-grid">
+          <div class="metric">
+            <span class="metric-label">Wind</span>
+            <span id="windSpeed" class="metric-value">--</span>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Gusts</span>
+            <span id="windGusts" class="metric-value">--</span>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Wave Height</span>
+            <span id="waveHeight" class="metric-value">--</span>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Wave Period</span>
+            <span id="wavePeriod" class="metric-value">--</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card rules-card">
+        <h2>Planning Thresholds</h2>
+        <div class="rules">
+          <div class="rule">
+            <span class="badge green">GREEN</span>
+            Wind under 15 kt, gusts under 20 kt, and waves under 3 ft.
+          </div>
+          <div class="rule">
+            <span class="badge yellow">YELLOW</span>
+            Wind 15–20 kt, gusts 20–25 kt, or waves 3–5 ft.
+          </div>
+          <div class="rule">
+            <span class="badge red">RED</span>
+            Wind over 20 kt, gusts over 25 kt, or waves over 5 ft.
+          </div>
+        </div>
+      </article>
+
+      <article class="card chart-card">
+        <h2>48-Hour Wind and Wave Forecast</h2>
+
+        <div class="legend">
+          <span class="legend-item">
+            <span class="dot" style="background:#36bdf1"></span>
+            Wind Speed (kt)
+          </span>
+          <span class="legend-item">
+            <span class="dot" style="background:#35c76f"></span>
+            Wave Height (ft × 5)
+          </span>
         </div>
 
-        <div class="metric">
-          <span class="metric-label">Wave Direction</span>
-          <strong id="waveDirection">--</strong>
+        <div class="chart-wrap">
+          <svg id="forecastChart" viewBox="0 0 1000 300" role="img"
+               aria-label="48-hour wind and wave forecast chart"></svg>
+        </div>
+      </article>
+
+      <article class="card table-card">
+        <h2>Hourly Go / No-Go Table</h2>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time (ET)</th>
+                <th>Wind</th>
+                <th>Gust</th>
+                <th>Wave</th>
+                <th>Period</th>
+                <th>Status</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody id="forecastRows"></tbody>
+          </table>
         </div>
       </article>
     </section>
 
     <footer>
-      Forecast information is advisory only. Confirm local conditions before water operations.
+      This page is a planning aid, not operational approval or a substitute for
+      official weather products, local marine warnings, risk-management procedures,
+      or commander/operator judgment.
     </footer>
   </main>
 
   <script>
-    const sites = {
-      cocoaBeach: {
-        name: "Cocoa Beach",
-        lat: 28.3200,
-        lon: -80.6076
+    const SITES = {
+      portCanaveral: {
+        name: "Port Canaveral / Nearshore",
+        lat: 28.410,
+        lon: -80.590
       },
-      capeCanaveral: {
-        name: "Cape Canaveral",
-        lat: 28.4058,
-        lon: -80.6048
+      bananaRiver: {
+        name: "Banana River",
+        lat: 28.375,
+        lon: -80.630
       },
-      sebastianInlet: {
-        name: "Sebastian Inlet",
-        lat: 27.8606,
-        lon: -80.4473
+      indianRiver: {
+        name: "Indian River Lagoon",
+        lat: 28.420,
+        lon: -80.730
       }
     };
 
+    const FT_PER_METER = 3.28084;
+
     const siteSelect = document.getElementById("siteSelect");
     const refreshButton = document.getElementById("refreshButton");
-    const status = document.getElementById("status");
+    const statusText = document.getElementById("status");
     const errorBox = document.getElementById("errorBox");
-    const results = document.getElementById("results");
+    const dashboard = document.getElementById("dashboard");
+    const forecastRows = document.getElementById("forecastRows");
 
-    function formatNumber(value, unit) {
-      if (value === null || value === undefined) {
-        return "--";
-      }
-
-      return `${Number(value).toFixed(1)} ${unit}`;
+    function number(value, decimals = 1) {
+      return Number.isFinite(value) ? value.toFixed(decimals) : "--";
     }
 
-    function directionToCompass(degrees) {
-      if (degrees === null || degrees === undefined) {
-        return "--";
-      }
+    function compass(degrees) {
+      if (!Number.isFinite(degrees)) return "--";
 
       const directions = [
         "N", "NNE", "NE", "ENE",
@@ -245,9 +584,47 @@
         "W", "WNW", "NW", "NNW"
       ];
 
-      const index = Math.round(Number(degrees) / 22.5) % 16;
+      return directions[Math.round(degrees / 22.5) % 16];
+    }
 
-      return `${directions[index]} (${Math.round(Number(degrees))}°)`;
+    function formatTime(time) {
+      const date = new Date(time);
+
+      return new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit"
+      }).format(date);
+    }
+
+    function getDecision(wind, gust, waveFeet) {
+      if (wind > 20 || gust > 25 || waveFeet > 5) {
+        return {
+          level: "RED",
+          css: "red",
+          panelCss: "red-bg",
+          label: "No-Go / Hazardous",
+          note: "Hazardous small-craft conditions."
+        };
+      }
+
+      if (wind >= 15 || gust >= 20 || waveFeet >= 3) {
+        return {
+          level: "YELLOW",
+          css: "yellow",
+          panelCss: "yellow-bg",
+          label: "Caution / Marginal",
+          note: "Review crew, craft, and local conditions."
+        };
+      }
+
+      return {
+        level: "GREEN",
+        css: "green",
+        panelCss: "green-bg",
+        label: "Favorable",
+        note: "Favorable for most small-craft operations."
+      };
     }
 
     async function fetchSite(site) {
@@ -255,24 +632,25 @@
         latitude: String(site.lat),
         longitude: String(site.lon),
         current: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+        hourly: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+        forecast_days: "2",
         timezone: "America/New_York",
-        wind_speed_unit: "ms"
+        wind_speed_unit: "kn"
       });
 
       const marineParams = new URLSearchParams({
         latitude: String(site.lat),
         longitude: String(site.lon),
-        current: "wave_height,wave_period,wave_direction",
+        hourly: "wave_height,wave_period,wave_direction",
+        forecast_days: "2",
         timezone: "America/New_York"
       });
 
       const weatherUrl =
-        "https://api.open-meteo.com/v1/forecast?" +
-        weatherParams.toString();
+        "https://api.open-meteo.com/v1/forecast?" + weatherParams.toString();
 
       const marineUrl =
-        "https://marine-api.open-meteo.com/v1/marine?" +
-        marineParams.toString();
+        "https://marine-api.open-meteo.com/v1/marine?" + marineParams.toString();
 
       const [weatherResponse, marineResponse] = await Promise.all([
         fetch(weatherUrl),
@@ -280,70 +658,248 @@
       ]);
 
       if (!weatherResponse.ok) {
-        const details = await weatherResponse.text();
-
         throw new Error(
-          `Weather request failed: HTTP ${weatherResponse.status}\n${details}`
+          `${site.name} weather request failed: HTTP ${weatherResponse.status}`
         );
       }
 
       if (!marineResponse.ok) {
-        const details = await marineResponse.text();
-
         throw new Error(
-          `Marine request failed: HTTP ${marineResponse.status}\n${details}`
+          `${site.name} marine request failed: HTTP ${marineResponse.status}`
         );
       }
 
       return {
+        site,
         weather: await weatherResponse.json(),
-        marine: await marineResponse.json(),
-        site
+        marine: await marineResponse.json()
       };
     }
 
-    function displayConditions(data) {
-      const wind = data.weather.current;
-      const waves = data.marine.current;
+    function closestMarineIndex(weatherTime, marineTimes) {
+      const exact = marineTimes.indexOf(weatherTime);
+      if (exact !== -1) return exact;
 
-      document.getElementById("windSpeed").textContent =
-        formatNumber(wind.wind_speed_10m, "m/s");
+      const weatherMillis = new Date(weatherTime).getTime();
+      let closestIndex = 0;
+      let smallestDifference = Infinity;
 
-      document.getElementById("windGusts").textContent =
-        formatNumber(wind.wind_gusts_10m, "m/s");
+      marineTimes.forEach((marineTime, index) => {
+        const difference = Math.abs(
+          new Date(marineTime).getTime() - weatherMillis
+        );
 
-      document.getElementById("windDirection").textContent =
-        directionToCompass(wind.wind_direction_10m);
+        if (difference < smallestDifference) {
+          smallestDifference = difference;
+          closestIndex = index;
+        }
+      });
 
-      document.getElementById("waveHeight").textContent =
-        formatNumber(waves.wave_height, "m");
-
-      document.getElementById("wavePeriod").textContent =
-        formatNumber(waves.wave_period, "sec");
-
-      document.getElementById("waveDirection").textContent =
-        directionToCompass(waves.wave_direction);
+      return closestIndex;
     }
 
-    async function loadConditions() {
-      const site = sites[siteSelect.value];
+    function renderCurrent(data) {
+      const wind = data.weather.current;
+      const marineIndex = closestMarineIndex(
+        wind.time,
+        data.marine.hourly.time
+      );
+
+      const waveMeters = data.marine.hourly.wave_height[marineIndex];
+      const waveFeet = waveMeters * FT_PER_METER;
+      const period = data.marine.hourly.wave_period[marineIndex];
+      const decision = getDecision(
+        wind.wind_speed_10m,
+        wind.wind_gusts_10m,
+        waveFeet
+      );
+
+      document.getElementById("selectedSiteName").textContent =
+        `${data.site.name} (${data.site.lat.toFixed(3)}°N, ${Math.abs(data.site.lon).toFixed(3)}°W)`;
+
+      document.getElementById("windSpeed").textContent =
+        `${number(wind.wind_speed_10m)} kt ${compass(wind.wind_direction_10m)}`;
+
+      document.getElementById("windGusts").textContent =
+        `${number(wind.wind_gusts_10m)} kt`;
+
+      document.getElementById("waveHeight").textContent =
+        `${number(waveFeet)} ft`;
+
+      document.getElementById("wavePeriod").textContent =
+        `${number(period)} sec`;
+
+      const panel = document.getElementById("currentStatusPanel");
+      panel.className = `status-panel ${decision.panelCss}`;
+
+      document.getElementById("currentStatus").textContent = decision.label;
+
+      const badge = document.getElementById("currentBadge");
+      badge.className = `badge ${decision.css}`;
+      badge.textContent = decision.level;
+    }
+
+    function renderSummary(hourlyData) {
+      const counts = { GREEN: 0, YELLOW: 0, RED: 0 };
+
+      hourlyData.forEach((hour) => {
+        counts[hour.decision.level] += 1;
+      });
+
+      let outlook = "Overall Favorable";
+      if (counts.RED > 0) {
+        outlook = "Periods of No-Go Conditions";
+      } else if (counts.YELLOW > 0) {
+        outlook = "Mixed / Marginal Conditions";
+      }
+
+      document.getElementById("overallOutlook").textContent = outlook;
+      document.getElementById("greenHours").textContent = `${counts.GREEN} hrs`;
+      document.getElementById("yellowHours").textContent = `${counts.YELLOW} hrs`;
+      document.getElementById("redHours").textContent = `${counts.RED} hrs`;
+    }
+
+    function makeHourlyData(data) {
+      const weather = data.weather.hourly;
+      const marine = data.marine.hourly;
+      const result = [];
+      const limit = Math.min(
+        48,
+        weather.time.length,
+        marine.time.length
+      );
+
+      for (let i = 0; i < limit; i += 1) {
+        const wind = weather.wind_speed_10m[i];
+        const gust = weather.wind_gusts_10m[i];
+        const waveFeet = marine.wave_height[i] * FT_PER_METER;
+
+        result.push({
+          time: weather.time[i],
+          wind,
+          gust,
+          windDirection: weather.wind_direction_10m[i],
+          waveFeet,
+          wavePeriod: marine.wave_period[i],
+          waveDirection: marine.wave_direction[i],
+          decision: getDecision(wind, gust, waveFeet)
+        });
+      }
+
+      return result;
+    }
+
+    function renderTable(hourlyData) {
+      forecastRows.innerHTML = hourlyData.map((hour) => `
+        <tr>
+          <td>${formatTime(hour.time)}</td>
+          <td>${number(hour.wind)} kt ${compass(hour.windDirection)}</td>
+          <td>${number(hour.gust)} kt</td>
+          <td>${number(hour.waveFeet)} ft</td>
+          <td>${number(hour.wavePeriod)} sec</td>
+          <td><span class="badge ${hour.decision.css}">${hour.decision.level}</span></td>
+          <td>${hour.decision.note}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderChart(hourlyData) {
+      const chart = document.getElementById("forecastChart");
+      const width = 1000;
+      const height = 300;
+      const left = 55;
+      const right = 25;
+      const top = 25;
+      const bottom = 45;
+      const plotWidth = width - left - right;
+      const plotHeight = height - top - bottom;
+
+      const maxWind = Math.max(...hourlyData.map((h) => h.wind), 25);
+      const maxScaledWave = Math.max(
+        ...hourlyData.map((h) => h.waveFeet * 5),
+        25
+      );
+      const maxValue = Math.ceil(Math.max(maxWind, maxScaledWave) / 5) * 5;
+
+      const x = (index) =>
+        left + (index / (hourlyData.length - 1)) * plotWidth;
+
+      const y = (value) =>
+        top + plotHeight - (value / maxValue) * plotHeight;
+
+      const polyline = (values) =>
+        values.map((value, index) => `${x(index)},${y(value)}`).join(" ");
+
+      const windPoints = polyline(hourlyData.map((h) => h.wind));
+      const wavePoints = polyline(hourlyData.map((h) => h.waveFeet * 5));
+
+      let grid = "";
+      for (let value = 0; value <= maxValue; value += 5) {
+        const yPos = y(value);
+        grid += `
+          <line x1="${left}" y1="${yPos}" x2="${width - right}" y2="${yPos}"
+            stroke="#315c7d" stroke-width="1" opacity="0.7" />
+          <text x="${left - 10}" y="${yPos + 4}" text-anchor="end"
+            fill="#abc2d3" font-size="12">${value}</text>
+        `;
+      }
+
+      let labels = "";
+      for (let index = 0; index < hourlyData.length; index += 6) {
+        labels += `
+          <text x="${x(index)}" y="${height - 15}" text-anchor="middle"
+            fill="#abc2d3" font-size="12">
+            ${formatTime(hourlyData[index].time).replace(/:\d\d/, "")}
+          </text>
+        `;
+      }
+
+      chart.innerHTML = `
+        <rect width="${width}" height="${height}" fill="#0b243b"></rect>
+        ${grid}
+        <line x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}"
+          stroke="#abc2d3" stroke-width="1" />
+        <line x1="${left}" y1="${height - bottom}" x2="${width - right}"
+          y2="${height - bottom}" stroke="#abc2d3" stroke-width="1" />
+
+        <polyline points="${windPoints}" fill="none" stroke="#36bdf1"
+          stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+
+        <polyline points="${wavePoints}" fill="none" stroke="#35c76f"
+          stroke-width="3" stroke-linejoin="round" stroke-linecap="round" />
+
+        <text x="${left}" y="16" fill="#abc2d3" font-size="12">
+          Wind (kt) / Wave Height (ft × 5)
+        </text>
+
+        ${labels}
+      `;
+    }
+
+    async function loadDashboard() {
+      const site = SITES[siteSelect.value];
 
       refreshButton.disabled = true;
+      dashboard.classList.add("hidden");
       errorBox.classList.add("hidden");
-      results.classList.add("hidden");
-      status.textContent = `Loading conditions for ${site.name}...`;
+      statusText.textContent = `Loading ${site.name} conditions...`;
 
       try {
         const data = await fetchSite(site);
+        const hourlyData = makeHourlyData(data);
 
-        displayConditions(data);
+        renderCurrent(data);
+        renderSummary(hourlyData);
+        renderChart(hourlyData);
+        renderTable(hourlyData);
 
-        results.classList.remove("hidden");
-        status.textContent = `${site.name} conditions loaded successfully.`;
+        dashboard.classList.remove("hidden");
+
+        statusText.textContent =
+          `${site.name} updated from forecast data.`;
       } catch (error) {
         console.error(error);
-
-        status.textContent = "Unable to load conditions.";
+        statusText.textContent = "Unable to load forecast conditions.";
         errorBox.textContent = error.message;
         errorBox.classList.remove("hidden");
       } finally {
@@ -351,10 +907,10 @@
       }
     }
 
-    refreshButton.addEventListener("click", loadConditions);
-    siteSelect.addEventListener("change", loadConditions);
+    refreshButton.addEventListener("click", loadDashboard);
+    siteSelect.addEventListener("change", loadDashboard);
 
-    loadConditions();
+    loadDashboard();
   </script>
 </body>
 </html>
