@@ -3,92 +3,158 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Space Coast Dashboard - Diagnostic</title>
+  <title>Space Coast Small Craft Go/No-Go Dashboard</title>
+  
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <style>
-    body { background: #0f172a; color: #f1f5f9; font-family: system-ui, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
-    .box { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
-    h1 { margin-top: 0; }
-    button { background: #2563eb; color: white; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; font-size: 1rem; }
-    pre { background: #0b1120; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 0.85rem; white-space: pre-wrap; }
-    .ok { color: #6ee7b7; }
-    .err { color: #fca5a5; }
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+    }
+    body {
+      background: var(--bg);
+      color: #e2e8f0;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 15px;
+      line-height: 1.5;
+    }
+    .panel {
+      background: var(--card);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    h1 { margin: 0 0 8px 0; color: var(--accent); }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    #map { height: 420px; border-radius: 10px; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 12px; text-align: center; border-bottom: 1px solid #475569; }
+    .red { background: rgba(239,68,68,0.3); }
+    .yellow { background: rgba(245,158,11,0.3); }
+    .green { background: rgba(16,185,129,0.3); }
+    #status { padding: 10px; background: #334155; border-radius: 6px; margin: 10px 0; font-weight: bold; }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>⚓ Space Coast Data Diagnostic</h1>
-    <p>This page will test if the weather/wave data can load.</p>
-    <button onclick="runTest()">▶ Run Data Test</button>
+
+  <div class="panel">
+    <h1>⚓ Space Coast Small Craft Go/No-Go Dashboard</h1>
+    <p>Port Canaveral • NDBC Buoy 41113</p>
+    <button onclick="loadData()">🔄 Refresh All Data</button>
+    <div id="status">Click Refresh to load data...</div>
   </div>
 
-  <div class="box">
-    <h2>Results</h2>
-    <div id="output">Click the button above to start the test...</div>
+  <div class="panel">
+    <h2>🛰️ Satellite View</h2>
+    <div id="map"></div>
+  </div>
+
+  <div class="panel">
+    <h2>📈 Next 48 Hours - Wind & Wave</h2>
+    <canvas id="myChart" height="170"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>Hourly Go/No-Go Table</h2>
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Time (ET)</th>
+          <th>Wind (mph)</th>
+          <th>Gust (mph)</th>
+          <th>Wave (ft)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
   </div>
 
   <script>
-    async function runTest() {
-      const out = document.getElementById('output');
-      out.innerHTML = '<p>Testing...</p>';
+    let mapInstance = null;
+    let chartInstance = null;
 
-      let log = '';
+    async function loadData() {
+      const status = document.getElementById("status");
+      status.textContent = "Fetching latest marine data...";
 
-      function add(msg, isError = false) {
-        log += `<div class="${isError ? 'err' : 'ok'}">${msg}</div>`;
-        out.innerHTML = log;
-      }
+      const url = "https://marine-api.open-meteo.com/v1/marine?latitude=28.40&longitude=-80.53&hourly=wave_height,wind_speed_10m,wind_gusts_10m&timezone=America/New_York";
 
       try {
-        add('1. Starting test...');
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Failed to fetch data");
 
-        // Test 1: Basic connectivity
-        add('2. Testing Open-Meteo Weather API...');
-        const weatherUrl = 'https://api.open-meteo.com/v1/forecast?latitude=28.40&longitude=-80.53&hourly=wind_speed_10m,wind_gusts_10m&forecast_days=2&timezone=America/New_York';
-        const weatherRes = await fetch(weatherUrl);
-        add(`   Weather status: ${weatherRes.status} ${weatherRes.statusText}`);
+        const data = await res.json();
 
-        if (!weatherRes.ok) throw new Error('Weather API failed with status ' + weatherRes.status);
+        const times = data.hourly.time;
+        const wind = data.hourly.wind_speed_10m;
+        const gusts = data.hourly.wind_gusts_10m;
+        const waves = data.hourly.wave_height;
 
-        const weatherData = await weatherRes.json();
-        add(`   ✅ Weather data received! Hours: ${weatherData.hourly.time.length}`);
-        add(`   First wind value: ${weatherData.hourly.wind_speed_10m[0]} m/s`);
-
-        // Test 2: Marine API
-        add('3. Testing Open-Meteo Marine API...');
-        const marineUrl = 'https://marine-api.open-meteo.com/v1/marine?latitude=28.40&longitude=-80.53&hourly=wave_height,wave_period&forecast_days=2&timezone=America/New_York';
-        const marineRes = await fetch(marineUrl);
-        add(`   Marine status: ${marineRes.status} ${marineRes.statusText}`);
-
-        if (!marineRes.ok) throw new Error('Marine API failed with status ' + marineRes.status);
-
-        const marineData = await marineRes.json();
-        add(`   ✅ Marine data received! Hours: ${marineData.hourly.time.length}`);
-        add(`   First wave height: ${marineData.hourly.wave_height[0]} meters`);
-
-        // Test 3: Show sample of next few hours
-        add('<br><strong>Sample of next 6 hours:</strong>');
-        let sample = '';
-        for (let i = 0; i < 6; i++) {
-          const time = weatherData.hourly.time[i].slice(11,16);
-          const wind = (weatherData.hourly.wind_speed_10m[i] * 1.94384).toFixed(1);
-          const wave = (marineData.hourly.wave_height[i] * 3.28084).toFixed(1);
-          sample += `${time} ET → Wind ${wind} kt | Wave ${wave} ft<br>`;
+        // Build Table
+        let html = "";
+        for (let i = 0; i < 48; i++) {
+          const statusText = (waves[i] >= 4 || gusts[i] >= 25) ? "RED" : 
+                            (waves[i] >= 2.5 || gusts[i] >= 20) ? "YELLOW" : "GREEN";
+          html += `<tr class="${statusText.toLowerCase()}">
+            <td>${times[i].slice(11,16)}</td>
+            <td>${Math.round(wind[i])}</td>
+            <td>${Math.round(gusts[i])}</td>
+            <td>${waves[i].toFixed(1)}</td>
+            <td><strong>${statusText}</strong></td>
+          </tr>`;
         }
-        add(sample);
+        document.querySelector("#dataTable tbody").innerHTML = html;
 
-        add('<br><strong class="ok">✅ SUCCESS! Both APIs are working. Data can be loaded.</strong>');
-        add('You can now go back to the full dashboard version.');
+        // Chart
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(document.getElementById("myChart"), {
+          type: 'line',
+          data: {
+            labels: times.slice(0,48).map(t => t.slice(11,16)),
+            datasets: [
+              { label: 'Wave Height (ft)', data: waves.slice(0,48), borderColor: '#38bdf8', tension: 0.3, borderWidth: 3 },
+              { label: 'Wind Speed (mph)', data: wind.slice(0,48), borderColor: '#facc15', tension: 0.3, borderWidth: 3 }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Map
+        if (!mapInstance) {
+          mapInstance = L.map('map').setView([28.41, -80.55], 11);
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Satellite © Esri'
+          }).addTo(mapInstance);
+          L.marker([28.40, -80.53]).addTo(mapInstance).bindPopup('NDBC Buoy 41113');
+        }
+
+        status.innerHTML = "✅ <b>Data loaded successfully!</b> Last updated just now";
 
       } catch (err) {
-        add('<br>❌ ERROR: ' + err.message, true);
-        add('This means the browser cannot reach Open-Meteo from your network.', true);
-        add('Possible causes: ad-blocker, corporate firewall, offline, or CORS issue.', true);
         console.error(err);
+        status.innerHTML = "❌ Could not load data. Please check your internet connection and try again.";
       }
     }
 
-    // Auto-run on load
-    window.onload = runTest;
+    window.onload = loadData;
   </script>
 </body>
 </html>
