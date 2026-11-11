@@ -3,29 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Space Coast Water Ops</title>
+  <meta name="description" content="Space Coast live and 48-hour small craft Go/No-Go dashboard.">
+  <title>Space Coast Live & 48-Hr Small Craft Go/No-Go</title>
 
-  <!-- Leaflet map library -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    crossorigin=""
   >
 
   <style>
     :root {
-      --background: #071624;
-      --panel: #102b40;
-      --panel-light: #163c59;
-      --border: #315d76;
-      --text: #f4f8fb;
-      --muted: #b7cad8;
-      --accent: #4bc5e8;
-      --green: #43d17b;
-      --yellow: #f4bd3f;
-      --red: #ec6262;
-      --gold: #f7c948;
-      --error-bg: #5b2222;
+      --bg: #061728;
+      --header: #071d32;
+      --panel: #0d2b45;
+      --panel-2: #123a58;
+      --line: #2a5c7c;
+      --text: #f3f8fc;
+      --muted: #a9c1d1;
+      --blue: #41c3ed;
+      --green: #42d17d;
+      --yellow: #f6c447;
+      --red: #ee6262;
+      --gold: #f5c84c;
+      --error-bg: #5c2323;
     }
 
     * {
@@ -34,37 +34,45 @@
 
     body {
       margin: 0;
+      min-width: 320px;
       color: var(--text);
       background:
-        radial-gradient(circle at top right, #185276 0%, transparent 36rem),
-        var(--background);
+        radial-gradient(circle at 90% 0%, #174e72 0, transparent 34rem),
+        var(--bg);
       font-family: Arial, Helvetica, sans-serif;
     }
 
     header {
-      padding: 28px 20px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(4, 18, 31, 0.92);
+      padding: 26px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(4, 18, 31, 0.95);
     }
 
-    main,
-    .header-content {
-      width: min(1200px, calc(100% - 32px));
+    .header-content,
+    main {
+      width: min(1280px, calc(100% - 32px));
       margin: 0 auto;
     }
 
     main {
-      padding: 24px 0 44px;
+      padding: 22px 0 45px;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
     }
 
     h1 {
-      margin: 0;
-      font-size: clamp(1.6rem, 4vw, 2.35rem);
+      margin-bottom: 7px;
+      font-size: clamp(1.45rem, 4vw, 2.25rem);
     }
 
     h2 {
-      margin: 0 0 14px;
-      font-size: 1.18rem;
+      margin-bottom: 14px;
+      font-size: 1.15rem;
     }
 
     .subtitle,
@@ -75,7 +83,7 @@
     }
 
     .subtitle {
-      margin: 8px 0 0;
+      margin-bottom: 0;
     }
 
     .controls {
@@ -85,9 +93,9 @@
       gap: 12px;
       padding: 16px;
       margin-bottom: 16px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--line);
       border-radius: 12px;
-      background: rgba(16, 43, 64, 0.92);
+      background: rgba(13, 43, 69, 0.92);
     }
 
     .field {
@@ -97,14 +105,14 @@
 
     label {
       color: var(--muted);
-      font-size: 0.84rem;
-      font-weight: bold;
+      font-size: 0.82rem;
+      font-weight: 700;
     }
 
     select,
     button {
-      min-height: 44px;
-      padding: 0 14px;
+      min-height: 43px;
+      padding: 0 13px;
       border-radius: 7px;
       font: inherit;
     }
@@ -112,20 +120,20 @@
     select {
       min-width: 260px;
       color: var(--text);
-      border: 1px solid var(--border);
-      background: #0a1d2d;
+      border: 1px solid var(--line);
+      background: #081d30;
     }
 
     button {
-      color: #042231;
+      color: #052033;
       cursor: pointer;
       border: 0;
-      background: var(--accent);
-      font-weight: bold;
+      background: var(--blue);
+      font-weight: 800;
     }
 
     button:hover {
-      filter: brightness(1.08);
+      filter: brightness(1.07);
     }
 
     button:disabled {
@@ -160,13 +168,20 @@
 
     .card {
       padding: 18px;
-      border: 1px solid var(--border);
+      border: 1px solid var(--line);
       border-radius: 12px;
-      background: rgba(16, 43, 64, 0.94);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+      background: rgba(13, 43, 69, 0.95);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
     }
 
-    .conditions-card {
+    .buoy-card,
+    .outlook-card,
+    .chart-card,
+    .table-card {
+      grid-column: span 12;
+    }
+
+    .live-card {
       grid-column: span 7;
     }
 
@@ -174,20 +189,85 @@
       grid-column: span 5;
     }
 
-    .source-card {
-      grid-column: span 12;
+    .buoy-header,
+    .status-panel {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .buoy-header {
+      margin-bottom: 15px;
+    }
+
+    .buoy-header h2 {
+      margin-bottom: 5px;
+    }
+
+    .buoy-header p {
+      margin: 0;
+    }
+
+    .official-link {
+      display: inline-block;
+      padding: 9px 11px;
+      color: #062131;
+      border-radius: 7px;
+      background: var(--gold);
+      font-size: 0.84rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .summary-grid,
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .live-card .metrics-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .metric,
+    .summary-metric {
+      min-height: 92px;
+      padding: 13px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.055);
+    }
+
+    .metric-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .metric-value {
+      display: block;
+      margin-top: 8px;
+      font-size: clamp(1.05rem, 2.5vw, 1.45rem);
+      font-weight: 800;
+    }
+
+    .metric-note {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.71rem;
+      line-height: 1.25;
     }
 
     .status-panel {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
       padding: 14px;
-      margin-bottom: 16px;
-      border: 1px solid var(--border);
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--panel-light);
+      background: var(--panel-2);
     }
 
     .status-panel small {
@@ -202,11 +282,11 @@
 
     .badge {
       display: inline-block;
-      padding: 6px 10px;
+      padding: 6px 11px;
       border-radius: 999px;
-      color: #061b29;
-      font-size: 0.78rem;
-      font-weight: bold;
+      color: #061728;
+      font-size: 0.76rem;
+      font-weight: 900;
     }
 
     .green {
@@ -218,82 +298,104 @@
     }
 
     .red {
-      color: white;
+      color: #fff;
       background: var(--red);
     }
 
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
+    .outlook-message {
+      margin: -3px 0 15px;
+      color: var(--muted);
     }
 
-    .metric {
-      min-height: 100px;
-      padding: 14px;
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+
+    .chart-wrap,
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    #forecastChart {
+      display: block;
+      width: 100%;
+      min-width: 780px;
+      height: 310px;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.055);
-    }
-
-    .metric-label {
-      display: block;
-      color: var(--muted);
-      font-size: 0.78rem;
-      font-weight: bold;
-    }
-
-    .metric-value {
-      display: block;
-      margin-top: 9px;
-      font-size: clamp(1.08rem, 2.6vw, 1.42rem);
-      font-weight: bold;
-    }
-
-    .metric-source {
-      display: block;
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 0.73rem;
+      background: #092139;
     }
 
     #copMap {
       width: 100%;
-      height: 460px;
-      border: 1px solid var(--border);
+      height: 470px;
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: #0b2234;
+      background: #092139;
     }
 
     .map-note {
       margin: 10px 0 0;
       color: var(--muted);
-      font-size: 0.82rem;
+      font-size: 0.81rem;
       line-height: 1.4;
     }
 
-    .source-list {
-      display: grid;
-      gap: 9px;
-      margin: 0;
-      padding-left: 20px;
+    table {
+      width: 100%;
+      min-width: 940px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 11px 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(169, 193, 209, 0.18);
+    }
+
+    th {
       color: var(--muted);
-      line-height: 1.4;
+      font-size: 0.73rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.04);
     }
 
     a {
-      color: #72d8f3;
+      color: #80ddf7;
     }
 
     footer {
-      padding-top: 22px;
-      font-size: 0.82rem;
+      padding-top: 20px;
+      font-size: 0.81rem;
       line-height: 1.45;
     }
 
     .leaflet-popup-content-wrapper,
     .leaflet-popup-tip {
-      color: #eef7fc;
-      background: #102b40;
+      color: #f3f8fc;
+      background: #0d2b45;
     }
 
     .leaflet-popup-content {
@@ -301,20 +403,27 @@
       line-height: 1.4;
     }
 
-    @media (max-width: 900px) {
-      .conditions-card,
+    @media (max-width: 1000px) {
+      .live-card,
       .map-card {
         grid-column: span 12;
+      }
+
+      .summary-grid,
+      .metrics-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
       }
     }
 
     @media (max-width: 650px) {
-      main,
-      .header-content {
-        width: min(100% - 24px, 1200px);
+      .header-content,
+      main {
+        width: min(100% - 24px, 1280px);
       }
 
-      .metrics-grid {
+      .summary-grid,
+      .metrics-grid,
+      .live-card .metrics-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -333,9 +442,9 @@
 <body>
   <header>
     <div class="header-content">
-      <h1>Space Coast Water Ops</h1>
+      <h1>Space Coast Live &amp; 48-Hr Small Craft Go/No-Go</h1>
       <p class="subtitle">
-        Common operating picture, NDBC buoy observations, and forecast marine conditions.
+        NDBC buoy observations, current local conditions, and 48-hour planning outlook.
       </p>
     </div>
   </header>
@@ -357,133 +466,245 @@
       </button>
     </section>
 
-    <p id="status">Loading conditions...</p>
+    <p id="status">Loading data...</p>
     <div id="errorBox" class="error hidden"></div>
 
     <section id="dashboard" class="grid hidden">
-      <article class="card conditions-card">
-        <h2>Current Conditions</h2>
+      <article class="card buoy-card">
+        <div class="buoy-header">
+          <div>
+            <h2>NOAA NDBC Buoy 41009</h2>
+            <p class="muted">
+              Canaveral — 20 NM East of Cape Canaveral
+              (28.508°N, 80.185°W)
+            </p>
+          </div>
+
+          <a
+            class="official-link"
+            href="https://www.ndbc.noaa.gov/station_page.php?station=41009"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open Official NDBC 41009 Page
+          </a>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric">
+            <span class="metric-label">Significant Wave Height</span>
+            <strong id="buoyWaveHeight" class="metric-value">--</strong>
+            <span id="buoyWaveHeightNote" class="metric-note">NDBC observation</span>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Dominant Period</span>
+            <strong id="buoyWavePeriod" class="metric-value">--</strong>
+            <span id="buoyWavePeriodNote" class="metric-note">NDBC observation</span>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Mean Wave Direction</span>
+            <strong id="buoyWaveDirection" class="metric-value">--</strong>
+            <span id="buoyWaveDirectionNote" class="metric-note">NDBC observation</span>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Water Temperature</span>
+            <strong id="buoyWaterTemp" class="metric-value">--</strong>
+            <span id="buoyWaterTempNote" class="metric-note">NDBC observation</span>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Data Age</span>
+            <strong id="buoyDataAge" class="metric-value">--</strong>
+            <span id="buoyDataAgeNote" class="metric-note">NDBC observation</span>
+          </div>
+        </div>
+      </article>
+
+      <article class="card live-card">
+        <h2>Live Conditions</h2>
 
         <div class="status-panel">
           <div>
-            <small id="siteName">Selected location</small>
-            <strong id="operationsStatus">--</strong>
+            <small id="selectedSite">Selected operating area</small>
+            <strong id="currentStatus">--</strong>
           </div>
 
-          <span id="operationsBadge" class="badge">--</span>
+          <span id="currentStatusBadge" class="badge">--</span>
         </div>
 
         <div class="metrics-grid">
           <div class="metric">
             <span class="metric-label">Wind</span>
-            <span id="windSpeed" class="metric-value">--</span>
-            <span id="windSource" class="metric-source">--</span>
+            <strong id="windSpeed" class="metric-value">--</strong>
+            <span class="metric-note">Open-Meteo weather</span>
           </div>
 
           <div class="metric">
-            <span class="metric-label">Wind Gusts</span>
-            <span id="windGusts" class="metric-value">--</span>
-            <span id="gustSource" class="metric-source">--</span>
+            <span class="metric-label">Gusts</span>
+            <strong id="windGusts" class="metric-value">--</strong>
+            <span class="metric-note">Open-Meteo weather</span>
           </div>
 
           <div class="metric">
             <span class="metric-label">Wave Height</span>
-            <span id="waveHeight" class="metric-value">--</span>
-            <span id="waveSource" class="metric-source">--</span>
+            <strong id="waveHeight" class="metric-value">--</strong>
+            <span class="metric-note">Open-Meteo marine</span>
           </div>
 
           <div class="metric">
             <span class="metric-label">Wave Period</span>
-            <span id="wavePeriod" class="metric-value">--</span>
-            <span id="periodSource" class="metric-source">--</span>
+            <strong id="wavePeriod" class="metric-value">--</strong>
+            <span class="metric-note">Open-Meteo marine</span>
           </div>
 
           <div class="metric">
             <span class="metric-label">Air Temperature</span>
-            <span id="airTemperature" class="metric-value">--</span>
-            <span id="airTemperatureSource" class="metric-source">--</span>
+            <strong id="airTemperature" class="metric-value">--</strong>
+            <span class="metric-note">Open-Meteo weather</span>
           </div>
 
           <div class="metric">
             <span class="metric-label">Sea Temperature</span>
-            <span id="seaTemperature" class="metric-value">--</span>
-            <span id="seaTemperatureSource" class="metric-source">--</span>
+            <strong id="seaTemperature" class="metric-value">--</strong>
+            <span class="metric-note">Open-Meteo marine</span>
           </div>
         </div>
       </article>
 
       <article class="card map-card">
-        <h2>Common Operating Picture</h2>
-
+        <h2>Operational Area Map</h2>
         <div id="copMap"></div>
 
         <p class="map-note">
-          Use the layer-control icon in the upper-right corner of the map to select
-          <strong>Satellite</strong>, <strong>Dark</strong>, or <strong>Street</strong>.
-          Gold marker = NOAA NDBC Station 41009.
+          Use the upper-right control to change between Satellite, Dark Map,
+          and Street Map. Gold marker = NOAA NDBC Station 41009.
         </p>
       </article>
 
-      <article class="card source-card">
-        <h2>Data Status and Sources</h2>
+      <article class="card outlook-card">
+        <h2>48-Hour Outlook Summary</h2>
+        <p id="outlookMessage" class="outlook-message">--</p>
 
-        <ul class="source-list">
-          <li id="weatherSourceStatus">Open-Meteo weather: pending.</li>
-          <li id="marineSourceStatus">Open-Meteo marine: pending.</li>
-          <li id="ndbcSourceStatus">NOAA NDBC Station 41009: pending.</li>
-          <li>
-            NDBC Station 41009:
-            <a
-              href="https://www.ndbc.noaa.gov/station_page.php?station=41009"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Canaveral — 20 NM east of Cape Canaveral
-            </a>
-          </li>
-        </ul>
+        <div class="summary-grid">
+          <div class="summary-metric">
+            <span class="metric-label">Overall Outlook</span>
+            <strong id="overallOutlook" class="metric-value">--</strong>
+          </div>
+
+          <div class="summary-metric">
+            <span class="metric-label">Green Hours</span>
+            <strong id="greenHours" class="metric-value">--</strong>
+          </div>
+
+          <div class="summary-metric">
+            <span class="metric-label">Yellow Hours</span>
+            <strong id="yellowHours" class="metric-value">--</strong>
+          </div>
+
+          <div class="summary-metric">
+            <span class="metric-label">Red Hours</span>
+            <strong id="redHours" class="metric-value">--</strong>
+          </div>
+
+          <div class="summary-metric">
+            <span class="metric-label">Worst Wave Height</span>
+            <strong id="maxWaveHeight" class="metric-value">--</strong>
+          </div>
+        </div>
+      </article>
+
+      <article class="card chart-card">
+        <h2>48-Hour Wind &amp; Wave Forecast</h2>
+
+        <div class="legend">
+          <span class="legend-item">
+            <span class="dot" style="background:#41c3ed"></span>
+            Wind Speed (kt)
+          </span>
+
+          <span class="legend-item">
+            <span class="dot" style="background:#f6c447"></span>
+            Wave Height (ft × 5)
+          </span>
+        </div>
+
+        <div class="chart-wrap">
+          <svg
+            id="forecastChart"
+            viewBox="0 0 1000 310"
+            role="img"
+            aria-label="48-hour wind and wave forecast chart"
+          ></svg>
+        </div>
+      </article>
+
+      <article class="card table-card">
+        <h2>Hourly Go/No-Go Table — Next 48 Hours</h2>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time (ET)</th>
+                <th>Wind (kt)</th>
+                <th>Gust (kt)</th>
+                <th>Wave (ft)</th>
+                <th>Period (sec)</th>
+                <th>Status</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+
+            <tbody id="forecastRows"></tbody>
+          </table>
+        </div>
       </article>
     </section>
 
     <footer>
-      This dashboard is a planning aid only. Confirm official weather products,
-      marine warnings, local restrictions, craft limitations, and organizational
-      operating procedures before conducting water operations.
+      Planning aid only. Confirm official weather products, current marine warnings,
+      local conditions, craft limits, and organizational procedures before water operations.
+      Go/No-Go thresholds in this page are editable planning thresholds—not operational approval.
     </footer>
   </main>
 
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    crossorigin=""
-  ></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
     const SITES = {
       portCanaveral: {
         name: "Port Canaveral / Nearshore",
         lat: 28.410,
-        lon: -80.590
+        lon: -80.590,
+        type: "Ocean"
       },
       bananaRiver: {
         name: "Banana River",
         lat: 28.375,
-        lon: -80.630
+        lon: -80.630,
+        type: "River"
       },
       indianRiver: {
         name: "Indian River Lagoon",
         lat: 28.420,
-        lon: -80.730
+        lon: -80.730,
+        type: "Lagoon"
       }
     };
 
-    const NDBC_41009 = {
+    const NDBC_BUOY = {
       id: "41009",
       name: "NOAA NDBC Station 41009",
-      description: "Canaveral — 20 NM east of Cape Canaveral",
+      label: "Canaveral — 20 NM East of Cape Canaveral",
       lat: 28.508,
       lon: -80.185,
-      pageUrl: "https://www.ndbc.noaa.gov/station_page.php?station=41009",
-      realtimeUrl: "https://www.ndbc.noaa.gov/data/realtime2/41009.txt"
+      pageUrl:
+        "https://www.ndbc.noaa.gov/station_page.php?station=41009",
+      realtimeUrl:
+        "https://www.ndbc.noaa.gov/data/realtime2/41009.txt"
     };
 
     const FEET_PER_METER = 3.28084;
@@ -494,6 +715,7 @@
     const statusText = document.getElementById("status");
     const errorBox = document.getElementById("errorBox");
     const dashboard = document.getElementById("dashboard");
+    const forecastRows = document.getElementById("forecastRows");
 
     let copMap;
     let selectedSiteMarker;
@@ -503,9 +725,42 @@
     }
 
     function celsiusToFahrenheit(celsius) {
-      return Number.isFinite(celsius)
-        ? (celsius * 9 / 5) + 32
-        : null;
+      if (!Number.isFinite(celsius)) {
+        return null;
+      }
+
+      return (celsius * 9 / 5) + 32;
+    }
+
+    function metersToFeet(meters) {
+      if (!Number.isFinite(meters)) {
+        return null;
+      }
+
+      return meters * FEET_PER_METER;
+    }
+
+    function metersPerSecondToKnots(metersPerSecond) {
+      if (!Number.isFinite(metersPerSecond)) {
+        return null;
+      }
+
+      return metersPerSecond * KNOTS_PER_MPS;
+    }
+
+    function parseNdbcNumber(value) {
+      if (
+        value === undefined ||
+        value === null ||
+        value === "" ||
+        value === "MM"
+      ) {
+        return null;
+      }
+
+      const number = Number(value);
+
+      return Number.isFinite(number) ? number : null;
     }
 
     function directionToCompass(degrees) {
@@ -523,25 +778,88 @@
       return directions[Math.round(degrees / 22.5) % 16];
     }
 
-    function parseNdbcValue(value) {
-      if (!value || value === "MM") {
+    function formatTimeEastern(apiTime) {
+      if (!apiTime) {
+        return "--";
+      }
+
+      const [datePart, timePart] = apiTime.split("T");
+
+      if (!datePart || !timePart) {
+        return apiTime;
+      }
+
+      const date = new Date(`${datePart}T${timePart}:00`);
+
+      return new Intl.DateTimeFormat("en-US", {
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit"
+      }).format(date);
+    }
+
+    function getDataAgeMinutes(timeUtc) {
+      if (!timeUtc) {
         return null;
       }
 
-      const parsed = Number(value);
+      const timestamp = new Date(
+        timeUtc.replace(" UTC", "Z").replace(" ", "T")
+      );
 
-      return Number.isFinite(parsed) ? parsed : null;
+      if (Number.isNaN(timestamp.getTime())) {
+        return null;
+      }
+
+      return Math.max(
+        0,
+        Math.round((Date.now() - timestamp.getTime()) / 60000)
+      );
     }
 
     /*
-      Parses the most recent line from the NDBC standard meteorological file.
+      Planning thresholds:
+      Green: wind <15 kt, gust <20 kt, waves <3 ft
+      Yellow: wind 15–20 kt, gust 20–25 kt, or waves 3–5 ft
+      Red: wind >20 kt, gust >25 kt, or waves >5 ft
+    */
+    function getDecision(windKnots, gustKnots, waveFeet) {
+      if (windKnots > 20 || gustKnots > 25 || waveFeet > 5) {
+        return {
+          level: "RED",
+          css: "red",
+          label: "No-Go / Hazardous",
+          note: "No-Go / Hazardous for small craft."
+        };
+      }
 
-      WSPD = wind speed in meters per second
-      GST  = wind gust in meters per second
-      WVHT = significant wave height in meters
-      DPD  = dominant wave period in seconds
-      ATMP = air temperature in Celsius
-      WTMP = water temperature in Celsius
+      if (windKnots >= 15 || gustKnots >= 20 || waveFeet >= 3) {
+        return {
+          level: "YELLOW",
+          css: "yellow",
+          label: "Caution / Marginal",
+          note: "Caution / Marginal conditions."
+        };
+      }
+
+      return {
+        level: "GREEN",
+        css: "green",
+        label: "Favorable",
+        note: "Favorable for most small craft."
+      };
+    }
+
+    /*
+      Parse the current NDBC standard meteorological observation.
+
+      WSPD = wind speed, m/s
+      GST  = wind gust, m/s
+      WVHT = significant wave height, m
+      DPD  = dominant wave period, sec
+      MWD  = mean wave direction, degrees true
+      ATMP = air temperature, Celsius
+      WTMP = water temperature, Celsius
     */
     function parseNdbcObservation(text) {
       const lines = text
@@ -552,7 +870,7 @@
       const headerLine = lines.find((line) => line.startsWith("#YY"));
 
       if (!headerLine) {
-        throw new Error("NDBC header row was not found.");
+        throw new Error("NDBC Station 41009 header was not found.");
       }
 
       const headers = headerLine
@@ -560,53 +878,56 @@
         .trim()
         .split(/\s+/);
 
-      const latestLine = lines.find((line) => {
+      const observationLine = lines.find((line) => {
         return !line.startsWith("#") &&
           /^\d{4}\s+\d{2}\s+\d{2}/.test(line);
       });
 
-      if (!latestLine) {
-        throw new Error("NDBC did not return a current observation.");
+      if (!observationLine) {
+        throw new Error("NDBC Station 41009 has no current observation.");
       }
 
-      const values = latestLine.split(/\s+/);
+      const values = observationLine.split(/\s+/);
       const observation = {};
 
       headers.forEach((header, index) => {
         observation[header] = values[index];
       });
 
+      const windSpeedMs = parseNdbcNumber(observation.WSPD);
+      const windGustMs = parseNdbcNumber(observation.GST);
+      const waveHeightMeters = parseNdbcNumber(observation.WVHT);
+      const airTemperatureC = parseNdbcNumber(observation.ATMP);
+      const waterTemperatureC = parseNdbcNumber(observation.WTMP);
+
       return {
         timeUtc:
           `${observation.YY}-${observation.MM}-${observation.DD} ` +
           `${observation.hh}:${observation.mm} UTC`,
 
-        windDirection: parseNdbcValue(observation.WDIR),
-        windSpeedKnots: parseNdbcValue(observation.WSPD) * KNOTS_PER_MPS,
-        windGustKnots: parseNdbcValue(observation.GST) * KNOTS_PER_MPS,
-        waveHeightFeet: parseNdbcValue(observation.WVHT) * FEET_PER_METER,
-        wavePeriodSeconds: parseNdbcValue(observation.DPD),
-        airTemperatureF: celsiusToFahrenheit(
-          parseNdbcValue(observation.ATMP)
-        ),
-        seaTemperatureF: celsiusToFahrenheit(
-          parseNdbcValue(observation.WTMP)
-        )
+        windDirection: parseNdbcNumber(observation.WDIR),
+        windSpeedKnots: metersPerSecondToKnots(windSpeedMs),
+        windGustKnots: metersPerSecondToKnots(windGustMs),
+
+        waveHeightFeet: metersToFeet(waveHeightMeters),
+        dominantPeriodSeconds: parseNdbcNumber(observation.DPD),
+        meanWaveDirection: parseNdbcNumber(observation.MWD),
+
+        airTemperatureF: celsiusToFahrenheit(airTemperatureC),
+        waterTemperatureF: celsiusToFahrenheit(waterTemperatureC)
       };
     }
 
-    /*
-      NDBC data are optional. The dashboard will still load if a browser blocks
-      the direct realtime request because of cross-origin (CORS) restrictions.
-    */
     async function fetchNdbc41009() {
       const response = await fetch(
-        `${NDBC_41009.realtimeUrl}?t=${Date.now()}`,
+        `${NDBC_BUOY.realtimeUrl}?t=${Date.now()}`,
         { cache: "no-store" }
       );
 
       if (!response.ok) {
-        throw new Error(`NDBC request failed: HTTP ${response.status}`);
+        throw new Error(
+          `NDBC 41009 request failed: HTTP ${response.status}`
+        );
       }
 
       return parseNdbcObservation(await response.text());
@@ -618,6 +939,9 @@
         longitude: String(site.lon),
         current:
           "temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+        hourly:
+          "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+        forecast_days: "2",
         timezone: "America/New_York",
         temperature_unit: "fahrenheit",
         wind_speed_unit: "kn"
@@ -645,7 +969,7 @@
         await Promise.allSettled([
           fetch(weatherUrl).then(async (response) => {
             if (!response.ok) {
-              throw new Error(`Weather request: HTTP ${response.status}`);
+              throw new Error(`Weather request HTTP ${response.status}`);
             }
 
             return response.json();
@@ -653,7 +977,7 @@
 
           fetch(marineUrl).then(async (response) => {
             if (!response.ok) {
-              throw new Error(`Marine request: HTTP ${response.status}`);
+              throw new Error(`Marine request HTTP ${response.status}`);
             }
 
             return response.json();
@@ -674,10 +998,14 @@
         site,
         weather: weatherResult.value,
         marine: marineResult.value,
-        ndbc: ndbcResult.status === "fulfilled" ? ndbcResult.value : null,
-        ndbcError: ndbcResult.status === "rejected"
-          ? ndbcResult.reason.message
-          : null
+        ndbc:
+          ndbcResult.status === "fulfilled"
+            ? ndbcResult.value
+            : null,
+        ndbcError:
+          ndbcResult.status === "rejected"
+            ? ndbcResult.reason.message
+            : null
       };
     }
 
@@ -688,188 +1016,376 @@
         return exactIndex;
       }
 
-      const targetTime = new Date(weatherTime).getTime();
+      const target = new Date(weatherTime).getTime();
       let closestIndex = 0;
-      let shortestDifference = Infinity;
+      let smallestDifference = Infinity;
 
       marineTimes.forEach((marineTime, index) => {
         const difference = Math.abs(
-          new Date(marineTime).getTime() - targetTime
+          new Date(marineTime).getTime() - target
         );
 
-        if (difference < shortestDifference) {
+        if (difference < smallestDifference) {
+          smallestDifference = difference;
           closestIndex = index;
-          shortestDifference = difference;
         }
       });
 
       return closestIndex;
     }
 
-    function getOperationalStatus(windKnots, gustKnots, waveFeet) {
-      if (windKnots > 20 || gustKnots > 25 || waveFeet > 5) {
-        return {
-          level: "RED",
-          label: "No-Go / Hazardous",
-          css: "red"
-        };
+    function renderBuoyPanel(ndbc, ndbcError) {
+      const availabilityNote = ndbc
+        ? `Observed ${ndbc.timeUtc}`
+        : `Unavailable: ${ndbcError || "No realtime data returned"}`;
+
+      document.getElementById("buoyWaveHeight").textContent =
+        ndbc && Number.isFinite(ndbc.waveHeightFeet)
+          ? `${formatNumber(ndbc.waveHeightFeet)} ft`
+          : "--";
+
+      document.getElementById("buoyWavePeriod").textContent =
+        ndbc && Number.isFinite(ndbc.dominantPeriodSeconds)
+          ? `${formatNumber(ndbc.dominantPeriodSeconds)} sec`
+          : "--";
+
+      document.getElementById("buoyWaveDirection").textContent =
+        ndbc && Number.isFinite(ndbc.meanWaveDirection)
+          ? `${directionToCompass(ndbc.meanWaveDirection)} ` +
+            `(${Math.round(ndbc.meanWaveDirection)}°)`
+          : "--";
+
+      document.getElementById("buoyWaterTemp").textContent =
+        ndbc && Number.isFinite(ndbc.waterTemperatureF)
+          ? `${formatNumber(ndbc.waterTemperatureF)} °F`
+          : "--";
+
+      const ageMinutes = ndbc ? getDataAgeMinutes(ndbc.timeUtc) : null;
+
+      document.getElementById("buoyDataAge").textContent =
+        Number.isFinite(ageMinutes)
+          ? `${ageMinutes} min`
+          : "--";
+
+      document.getElementById("buoyWaveHeightNote").textContent =
+        availabilityNote;
+
+      document.getElementById("buoyWavePeriodNote").textContent =
+        availabilityNote;
+
+      document.getElementById("buoyWaveDirectionNote").textContent =
+        availabilityNote;
+
+      document.getElementById("buoyWaterTempNote").textContent =
+        availabilityNote;
+
+      document.getElementById("buoyDataAgeNote").textContent =
+        availabilityNote;
+    }
+
+    function makeHourlyData(data) {
+      const weather = data.weather.hourly;
+      const marine = data.marine.hourly;
+      const hours = [];
+
+      const count = Math.min(
+        48,
+        weather.time.length,
+        marine.time.length
+      );
+
+      for (let index = 0; index < count; index += 1) {
+        const wind = weather.wind_speed_10m[index];
+        const gust = weather.wind_gusts_10m[index];
+
+        const waveMeters = marine.wave_height[index];
+        const waveFeet = Number.isFinite(waveMeters)
+          ? waveMeters * FEET_PER_METER
+          : null;
+
+        hours.push({
+          time: weather.time[index],
+          wind,
+          gust,
+          windDirection: weather.wind_direction_10m[index],
+          waveFeet,
+          wavePeriod: marine.wave_period[index],
+          waveDirection: marine.wave_direction[index],
+          decision: getDecision(wind, gust, waveFeet)
+        });
       }
 
-      if (windKnots >= 15 || gustKnots >= 20 || waveFeet >= 3) {
-        return {
-          level: "YELLOW",
-          label: "Caution / Marginal",
-          css: "yellow"
-        };
-      }
-
-      return {
-        level: "GREEN",
-        label: "Favorable",
-        css: "green"
-      };
+      return hours;
     }
 
-    function setText(id, text) {
-      document.getElementById(id).textContent = text;
-    }
-
-    function setMetric(valueId, sourceId, value, source) {
-      setText(valueId, value);
-      setText(sourceId, source);
-    }
-
-    function renderConditions(data) {
+    function renderLiveConditions(data) {
       const weather = data.weather.current;
       const marineIndex = findClosestMarineIndex(
         weather.time,
         data.marine.hourly.time
       );
 
-      const marine = {
-        waveHeightFeet:
-          data.marine.hourly.wave_height[marineIndex] * FEET_PER_METER,
-        wavePeriod:
-          data.marine.hourly.wave_period[marineIndex],
-        waveDirection:
-          data.marine.hourly.wave_direction[marineIndex],
-        seaTemperature:
-          data.marine.hourly.sea_surface_temperature[marineIndex]
-      };
+      const waveMeters =
+        data.marine.hourly.wave_height[marineIndex];
 
-      /*
-        Use NDBC observations when a station value exists.
-        Otherwise, retain local Open-Meteo data as the fallback.
-      */
-      const wind = Number.isFinite(data.ndbc?.windSpeedKnots)
-        ? data.ndbc.windSpeedKnots
-        : weather.wind_speed_10m;
+      const waveFeet = Number.isFinite(waveMeters)
+        ? waveMeters * FEET_PER_METER
+        : null;
 
-      const gust = Number.isFinite(data.ndbc?.windGustKnots)
-        ? data.ndbc.windGustKnots
-        : weather.wind_gusts_10m;
+      const wavePeriod =
+        data.marine.hourly.wave_period[marineIndex];
 
-      const waveHeight = Number.isFinite(data.ndbc?.waveHeightFeet)
-        ? data.ndbc.waveHeightFeet
-        : marine.waveHeightFeet;
+      const waveDirection =
+        data.marine.hourly.wave_direction[marineIndex];
 
-      const wavePeriod = Number.isFinite(data.ndbc?.wavePeriodSeconds)
-        ? data.ndbc.wavePeriodSeconds
-        : marine.wavePeriod;
+      const seaTemperature =
+        data.marine.hourly.sea_surface_temperature
+          ? data.marine.hourly.sea_surface_temperature[marineIndex]
+          : null;
 
-      const airTemperature = Number.isFinite(data.ndbc?.airTemperatureF)
-        ? data.ndbc.airTemperatureF
-        : weather.temperature_2m;
-
-      const seaTemperature = Number.isFinite(data.ndbc?.seaTemperatureF)
-        ? data.ndbc.seaTemperatureF
-        : marine.seaTemperature;
-
-      const ndbcTime = data.ndbc?.timeUtc || null;
-      const decision = getOperationalStatus(wind, gust, waveHeight);
-
-      setText(
-        "siteName",
-        `${data.site.name} — current conditions`
+      const decision = getDecision(
+        weather.wind_speed_10m,
+        weather.wind_gusts_10m,
+        waveFeet
       );
 
-      setMetric(
-        "windSpeed",
-        "windSource",
-        `${formatNumber(wind)} kt ${
-          Number.isFinite(data.ndbc?.windDirection)
-            ? directionToCompass(data.ndbc.windDirection)
-            : directionToCompass(weather.wind_direction_10m)
-        }`,
-        ndbcTime ? `NOAA NDBC 41009 observed (${ndbcTime})` :
-          "Open-Meteo current forecast/analysis"
-      );
+      document.getElementById("selectedSite").textContent =
+        `${data.site.name} — ${data.site.type}`;
 
-      setMetric(
-        "windGusts",
-        "gustSource",
-        `${formatNumber(gust)} kt`,
-        ndbcTime ? "NOAA NDBC 41009 observed" :
-          "Open-Meteo current forecast/analysis"
-      );
+      document.getElementById("windSpeed").textContent =
+        `${formatNumber(weather.wind_speed_10m)} kt ` +
+        `${directionToCompass(weather.wind_direction_10m)}`;
 
-      setMetric(
-        "waveHeight",
-        "waveSource",
-        `${formatNumber(waveHeight)} ft`,
-        ndbcTime ? "NOAA NDBC 41009 observed" :
-          "Open-Meteo marine forecast/analysis"
-      );
+      document.getElementById("windGusts").textContent =
+        `${formatNumber(weather.wind_gusts_10m)} kt`;
 
-      setMetric(
-        "wavePeriod",
-        "periodSource",
-        `${formatNumber(wavePeriod)} sec`,
-        ndbcTime ? "NOAA NDBC 41009 observed" :
-          `Open-Meteo marine — ${directionToCompass(marine.waveDirection)}`
-      );
+      document.getElementById("waveHeight").textContent =
+        `${formatNumber(waveFeet)} ft`;
 
-      setMetric(
-        "airTemperature",
-        "airTemperatureSource",
-        `${formatNumber(airTemperature)} °F`,
-        ndbcTime ? "NOAA NDBC 41009 observed" :
-          "Open-Meteo current forecast/analysis"
-      );
+      document.getElementById("wavePeriod").textContent =
+        `${formatNumber(wavePeriod)} sec ` +
+        `${directionToCompass(waveDirection)}`;
 
-      setMetric(
-        "seaTemperature",
-        "seaTemperatureSource",
-        `${formatNumber(seaTemperature)} °F`,
-        ndbcTime ? "NOAA NDBC 41009 observed" :
-          "Open-Meteo marine forecast/analysis"
-      );
+      document.getElementById("airTemperature").textContent =
+        `${formatNumber(weather.temperature_2m)} °F`;
 
-      setText("operationsStatus", decision.label);
+      document.getElementById("seaTemperature").textContent =
+        Number.isFinite(seaTemperature)
+          ? `${formatNumber(seaTemperature)} °F`
+          : "--";
 
-      const badge = document.getElementById("operationsBadge");
+      document.getElementById("currentStatus").textContent =
+        decision.label;
+
+      const badge = document.getElementById("currentStatusBadge");
       badge.textContent = decision.level;
       badge.className = `badge ${decision.css}`;
-
-      setText(
-        "weatherSourceStatus",
-        `Open-Meteo weather: loaded for ${data.site.name}.`
-      );
-
-      setText(
-        "marineSourceStatus",
-        "Open-Meteo marine: loaded."
-      );
-
-      setText(
-        "ndbcSourceStatus",
-        data.ndbc
-          ? `NOAA NDBC Station 41009: observed data loaded (${ndbcTime}).`
-          : `NOAA NDBC Station 41009: direct observations unavailable in this browser; Open-Meteo fallback active. ${data.ndbcError || ""}`
-      );
     }
 
-    function createCircleMarker(lat, lon, color, label, popupHtml) {
+    function renderOutlook(hours) {
+      const counts = {
+        GREEN: 0,
+        YELLOW: 0,
+        RED: 0
+      };
+
+      hours.forEach((hour) => {
+        counts[hour.decision.level] += 1;
+      });
+
+      const maxWave = Math.max(
+        ...hours.map((hour) => hour.waveFeet || 0)
+      );
+
+      let outlook = "Overall Favorable";
+      let message = "Good window for small craft operations.";
+
+      if (counts.RED > 0) {
+        outlook = "Hazardous Periods Expected";
+        message =
+          "One or more forecast periods meet the No-Go planning threshold.";
+      } else if (counts.YELLOW > 0) {
+        outlook = "Mixed / Marginal Conditions";
+        message =
+          "Review timing, craft limitations, crew experience, and local conditions.";
+      }
+
+      document.getElementById("overallOutlook").textContent =
+        outlook;
+
+      document.getElementById("outlookMessage").textContent =
+        message;
+
+      document.getElementById("greenHours").textContent =
+        `${counts.GREEN} hrs`;
+
+      document.getElementById("yellowHours").textContent =
+        `${counts.YELLOW} hrs`;
+
+      document.getElementById("redHours").textContent =
+        `${counts.RED} hrs`;
+
+      document.getElementById("maxWaveHeight").textContent =
+        `${formatNumber(maxWave)} ft`;
+    }
+
+    function renderForecastTable(hours) {
+      forecastRows.innerHTML = hours.map((hour) => `
+        <tr>
+          <td>${formatTimeEastern(hour.time)}</td>
+          <td>
+            ${formatNumber(hour.wind)} ${directionToCompass(hour.windDirection)}
+          </td>
+          <td>${formatNumber(hour.gust)}</td>
+          <td>${formatNumber(hour.waveFeet)}</td>
+          <td>${formatNumber(hour.wavePeriod)}</td>
+          <td>
+            <span class="badge ${hour.decision.css}">
+              ${hour.decision.level}
+            </span>
+          </td>
+          <td>${hour.decision.note}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderChart(hours) {
+      const chart = document.getElementById("forecastChart");
+
+      const width = 1000;
+      const height = 310;
+      const left = 55;
+      const right = 26;
+      const top = 28;
+      const bottom = 45;
+
+      const plotWidth = width - left - right;
+      const plotHeight = height - top - bottom;
+
+      const maxWind = Math.max(
+        ...hours.map((hour) => hour.wind || 0),
+        25
+      );
+
+      const maxScaledWave = Math.max(
+        ...hours.map((hour) => (hour.waveFeet || 0) * 5),
+        25
+      );
+
+      const maxValue = Math.ceil(
+        Math.max(maxWind, maxScaledWave) / 5
+      ) * 5;
+
+      const x = (index) =>
+        left + (index / Math.max(hours.length - 1, 1)) * plotWidth;
+
+      const y = (value) =>
+        top + plotHeight - (value / maxValue) * plotHeight;
+
+      const makePoints = (values) =>
+        values.map((value, index) => {
+          return `${x(index)},${y(value)}`;
+        }).join(" ");
+
+      const windPoints = makePoints(
+        hours.map((hour) => hour.wind || 0)
+      );
+
+      const wavePoints = makePoints(
+        hours.map((hour) => (hour.waveFeet || 0) * 5)
+      );
+
+      let gridLines = "";
+
+      for (let value = 0; value <= maxValue; value += 5) {
+        const position = y(value);
+
+        gridLines += `
+          <line
+            x1="${left}"
+            y1="${position}"
+            x2="${width - right}"
+            y2="${position}"
+            stroke="#2a5c7c"
+            stroke-width="1"
+            opacity="0.8"
+          />
+          <text
+            x="${left - 10}"
+            y="${position + 4}"
+            text-anchor="end"
+            fill="#a9c1d1"
+            font-size="12"
+          >${value}</text>
+        `;
+      }
+
+      let timeLabels = "";
+
+      for (let index = 0; index < hours.length; index += 6) {
+        timeLabels += `
+          <text
+            x="${x(index)}"
+            y="${height - 16}"
+            text-anchor="middle"
+            fill="#a9c1d1"
+            font-size="12"
+          >${formatTimeEastern(hours[index].time).replace(/:\d\d/, "")}</text>
+        `;
+      }
+
+      chart.innerHTML = `
+        ${gridLines}
+
+        <line
+          x1="${left}"
+          y1="${top}"
+          x2="${left}"
+          y2="${height - bottom}"
+          stroke="#a9c1d1"
+          stroke-width="1"
+        />
+
+        <line
+          x1="${left}"
+          y1="${height - bottom}"
+          x2="${width - right}"
+          y2="${height - bottom}"
+          stroke="#a9c1d1"
+          stroke-width="1"
+        />
+
+        <polyline
+          points="${windPoints}"
+          fill="none"
+          stroke="#41c3ed"
+          stroke-width="3"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+
+        <polyline
+          points="${wavePoints}"
+          fill="none"
+          stroke="#f6c447"
+          stroke-width="3"
+          stroke-dasharray="7 5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+
+        <text
+          x="${left}"
+          y="17"
+          fill="#a9c1d1"
+          font-size="12"
+        >Wind (kt) / Wave Height (ft × 5)</text>
+
+        ${timeLabels}
+      `;
+    }
+
+    function makeMarker(lat, lon, color, tooltip, popup) {
       return L.circleMarker([lat, lon], {
         radius: 8,
         color: "#ffffff",
@@ -877,17 +1393,20 @@
         fillColor: color,
         fillOpacity: 0.95
       })
-        .bindTooltip(label, { direction: "top", offset: [0, -8] })
-        .bindPopup(popupHtml);
+        .bindTooltip(tooltip, {
+          direction: "top",
+          offset: [0, -8]
+        })
+        .bindPopup(popup);
     }
 
-    function initializeCopMap() {
-      if (copMap) {
+    function initializeMap() {
+      if (copMap || typeof L === "undefined") {
         return;
       }
 
       copMap = L.map("copMap", {
-        center: [28.405, -80.470],
+        center: [28.425, -80.440],
         zoom: 10,
         zoomControl: true
       });
@@ -901,19 +1420,19 @@
         }
       );
 
-      const street = L.tileLayer(
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          maxZoom: 19,
-          attribution: "© OpenStreetMap contributors"
-        }
-      );
-
-      const dark = L.tileLayer(
+      const darkMap = L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
         {
           maxZoom: 19,
           attribution: "© OpenStreetMap contributors © CARTO"
+        }
+      );
+
+      const streetMap = L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+        {
+          maxZoom: 19,
+          attribution: "© OpenStreetMap contributors"
         }
       );
 
@@ -922,42 +1441,50 @@
       L.control.layers(
         {
           Satellite: satellite,
-          "Dark Map": dark,
-          Street: street
+          "Dark Map": darkMap,
+          "Street Map": streetMap
         },
         null,
-        { collapsed: true }
+        {
+          collapsed: true
+        }
       ).addTo(copMap);
 
       Object.values(SITES).forEach((site) => {
-        createCircleMarker(
+        makeMarker(
           site.lat,
           site.lon,
-          "#4bc5e8",
+          "#41c3ed",
           site.name,
-          `<strong>${site.name}</strong><br>${site.lat.toFixed(3)}°N, ${Math.abs(site.lon).toFixed(3)}°W`
+          `
+            <strong>${site.name}</strong><br>
+            ${site.type}<br>
+            ${site.lat.toFixed(3)}°N,
+            ${Math.abs(site.lon).toFixed(3)}°W
+          `
         ).addTo(copMap);
       });
 
-      createCircleMarker(
-        NDBC_41009.lat,
-        NDBC_41009.lon,
-        "#f7c948",
+      makeMarker(
+        NDBC_BUOY.lat,
+        NDBC_BUOY.lon,
+        "#f5c84c",
         "NDBC 41009",
         `
-          <strong>${NDBC_41009.name}</strong><br>
-          ${NDBC_41009.description}<br>
-          ${NDBC_41009.lat.toFixed(3)}°N, ${Math.abs(NDBC_41009.lon).toFixed(3)}°W<br>
-          <a href="${NDBC_41009.pageUrl}" target="_blank" rel="noopener noreferrer">
-            Open NOAA station page
-          </a>
+          <strong>${NDBC_BUOY.name}</strong><br>
+          ${NDBC_BUOY.label}<br>
+          ${NDBC_BUOY.lat.toFixed(3)}°N,
+          ${Math.abs(NDBC_BUOY.lon).toFixed(3)}°W<br><br>
+          <a
+            href="${NDBC_BUOY.pageUrl}"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Open Official NDBC Station Page</a>
         `
       ).addTo(copMap);
-
-      copMap.invalidateSize();
     }
 
-    function updateSelectedSiteMarker(site) {
+    function updateSelectedMarker(site) {
       if (!copMap) {
         return;
       }
@@ -970,39 +1497,45 @@
         radius: 13,
         color: "#ffffff",
         weight: 3,
-        fillColor: "#e85858",
-        fillOpacity: 0.92
+        fillColor: "#ee6262",
+        fillOpacity: 0.96
       })
-        .bindTooltip("Selected Operational Area", {
-          permanent: false,
+        .bindTooltip("Selected Operating Area", {
           direction: "bottom"
         })
         .addTo(copMap);
 
       copMap.panTo([site.lat, site.lon]);
+      copMap.invalidateSize();
     }
 
     async function loadDashboard() {
       const site = SITES[siteSelect.value];
 
       refreshButton.disabled = true;
-      errorBox.classList.add("hidden");
       dashboard.classList.add("hidden");
-      statusText.textContent = `Loading conditions for ${site.name}...`;
+      errorBox.classList.add("hidden");
+      statusText.textContent =
+        `Loading conditions for ${site.name}...`;
 
       try {
-        initializeCopMap();
-
         const data = await fetchSite(site);
+        const hourlyData = makeHourlyData(data);
 
-        renderConditions(data);
-        updateSelectedSiteMarker(site);
+        renderBuoyPanel(data.ndbc, data.ndbcError);
+        renderLiveConditions(data);
+        renderOutlook(hourlyData);
+        renderChart(hourlyData);
+        renderForecastTable(hourlyData);
 
         dashboard.classList.remove("hidden");
-        copMap.invalidateSize();
 
-        statusText.textContent =
-          `${site.name} conditions loaded successfully.`;
+        initializeMap();
+        updateSelectedMarker(site);
+
+        statusText.textContent = data.ndbc
+          ? `${site.name} conditions and NDBC Station 41009 observations loaded.`
+          : `${site.name} forecast conditions loaded. NDBC 41009 observations were unavailable.`;
       } catch (error) {
         console.error(error);
 
