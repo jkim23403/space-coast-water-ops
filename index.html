@@ -3,55 +3,139 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Space Coast Dashboard</title>
+  <title>Space Coast Small Craft Go/No-Go Dashboard</title>
+  
+  <!-- Leaflet Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
   <style>
-    body { background:#0f172a; color:#e2e8f0; font-family:Arial,sans-serif; margin:0; padding:20px; }
-    .panel { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px; margin-bottom:20px; }
-    h1 { color:#38bdf8; }
-    button { background:#2563eb; color:white; border:none; padding:12px 24px; border-radius:8px; cursor:pointer; }
-    #status { padding:12px; background:#334155; border-radius:8px; margin:10px 0; }
-    table { width:100%; border-collapse:collapse; }
-    th, td { padding:12px; text-align:center; border-bottom:1px solid #475569; }
-    .red { background:rgba(239,68,68,0.3); }
-    .yellow { background:rgba(245,158,11,0.3); }
-    .green { background:rgba(16,185,129,0.3); }
+    :root {
+      --bg-page: #0f172a;
+      --bg-card: #1e293b;
+      --accent: #38bdf8;
+      --gold: #facc15;
+    }
+    body {
+      background: var(--bg-page);
+      color: #e2e8f0;
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 15px;
+    }
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    h1 { margin: 0 0 8px 0; color: var(--accent); }
+    button {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #map { height: 420px; border-radius: 10px; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+    th, td { padding: 12px; text-align: center; border-bottom: 1px solid #475569; }
+    th { background: #0f172a; color: #94a3b8; }
+    .red { background: rgba(239,68,68,0.3); }
+    .yellow { background: rgba(245,158,11,0.3); }
+    .green { background: rgba(16,185,129,0.3); }
+    #status { padding: 12px; background: #334155; border-radius: 8px; margin: 10px 0; }
   </style>
 </head>
 <body>
 
   <div class="panel">
-    <h1>⚓ Space Coast Small Craft Go/No-Go</h1>
-    <button onclick="loadData()">Refresh Data</button>
-    <div id="status">Loading...</div>
+    <h1>⚓ Space Coast Small Craft Go/No-Go Dashboard</h1>
+    <p>Port Canaveral • NDBC Buoy 41113 • Live Marine Conditions</p>
+    <button onclick="loadData()">↻ Refresh All Data</button>
+    <div id="status">Loading data...</div>
   </div>
 
   <div class="panel">
-    <h2>48 Hour Chart</h2>
-    <canvas id="chart" height="180"></canvas>
+    <h2>🛰️ Satellite Map</h2>
+    <div id="map"></div>
   </div>
 
   <div class="panel">
-    <h2>Table</h2>
-    <table id="table">
-      <thead><tr><th>Time</th><th>Wind</th><th>Gust</th><th>Wave</th><th>Status</th></tr></thead>
+    <h2>📈 48-Hour Wind & Wave Chart</h2>
+    <canvas id="myChart" height="170"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>Hourly Go/No-Go Table (Next 48 Hours)</h2>
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>Time (ET)</th>
+          <th>Wind (mph)</th>
+          <th>Gust (mph)</th>
+          <th>Waves (ft)</th>
+          <th>Status</th>
+        </tr>
+      </thead>
       <tbody></tbody>
     </table>
   </div>
 
   <script>
+    let mapInstance = null;
+    let chartInstance = null;
+
     async function loadData() {
-      document.getElementById("status").innerHTML = "Loading data from Open-Meteo...";
+      const status = document.getElementById("status");
+      status.textContent = "Fetching live marine data...";
+
       try {
-        const res = await fetch("https://marine-api.open-meteo.com/v1/marine?latitude=28.4&longitude=-80.53&hourly=wave_height,wind_speed_10m,wind_gusts_10m&timezone=America/New_York");
+        const res = await fetch("https://marine-api.open-meteo.com/v1/marine?latitude=28.40&longitude=-80.53&hourly=wave_height,wind_speed_10m,wind_gusts_10m&timezone=America/New_York");
         const data = await res.json();
 
-        const t = data.hourly.time;
+        const times = data.hourly.time;
         const wind = data.hourly.wind_speed_10m;
-        const gust = data.hourly.wind_gusts_10m;
-        const wave = data.hourly.wave_height;
+        const gusts = data.hourly.wind_gusts_10m;
+        const waves = data.hourly.wave_height;
 
-        let rows = "";
-        for (let i = 0; i < 36; i++) {
-          let s = (wave[i] >= 4 || gust[i] >= 25) ? "red" : (wave[i] >= 2.5 || gust[i] >= 20) ? "yellow" : "green";
-          rows += 
+        // Table
+        let html = "";
+        for (let i = 0; i < 48; i++) {
+          const wave = waves[i];
+          const gust = gusts[i];
+          let stat = (wave >= 4 || gust >= 25) ? "red" : (wave >= 2.5 || gust >= 20) ? "yellow" : "green";
+          html += `<tr class="${stat}">
+            <td>${times[i].slice(11,16)}</td>
+            <td>${Math.round(wind[i])}</td>
+            <td>${Math.round(gust)}</td>
+            <td>${wave.toFixed(1)}</td>
+            <td><strong>${stat.toUpperCase()}</strong></td>
+          </tr>`;
+        }
+        document.querySelector("#dataTable tbody").innerHTML = html;
+
+        // Chart
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(document.getElementById("myChart"), {
+          type: 'line',
+          data: {
+            labels: times.slice(0,48).map(t => t.slice(11,16)),
+            datasets: [
+              { label: 'Wave Height (ft)', data: waves.slice(0,48), borderColor: '#38bdf8', tension: 0.3, borderWidth: 3 },
+              { label: 'Wind Speed (mph)', data: wind.slice(0,48), borderColor: '#facc15', tension: 0.3, borderWidth: 3 }
+            ]
+          },
+          options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Map
+        if (!mapInstance) {
+          mapInstance = L.map('map').setView([28.41, -80.55], 11);
+          L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
