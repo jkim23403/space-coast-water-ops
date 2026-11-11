@@ -6,21 +6,357 @@
   <title>Space Coast Water Ops</title>
 
   <style>
+    :root {
+      --background: #071624;
+      --panel: #102b40;
+      --border: #31566d;
+      --text: #f4f8fb;
+      --muted: #b7cad8;
+      --accent: #4bc5e8;
+      --error-bg: #562121;
+      --error-border: #ff7777;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background: #071624;
-      color: white;
-      font-family: Arial, sans-serif;
-      padding: 40px;
+      margin: 0;
+      padding: 24px;
+      color: var(--text);
+      background: var(--background);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    main {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin-bottom: 6px;
+    }
+
+    .subtitle,
+    #status {
+      color: var(--muted);
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 24px 0;
+    }
+
+    select,
+    button {
+      min-height: 44px;
+      padding: 0 14px;
+      border-radius: 7px;
+      font-size: 16px;
+    }
+
+    select {
+      min-width: 220px;
+      color: var(--text);
+      border: 1px solid var(--border);
+      background: var(--panel);
+    }
+
+    button {
+      color: #041d29;
+      cursor: pointer;
+      border: 0;
+      background: var(--accent);
+      font-weight: bold;
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .card {
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+
+    .card h2 {
+      margin-top: 0;
+    }
+
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .metric:last-child {
+      border-bottom: 0;
+    }
+
+    .metric-label {
+      color: var(--muted);
+    }
+
+    .error {
+      padding: 14px;
+      margin-top: 16px;
+      color: #ffe7e7;
+      border: 1px solid var(--error-border);
+      border-radius: 8px;
+      background: var(--error-bg);
+      white-space: pre-wrap;
+    }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
     }
   </style>
 </head>
 
 <body>
-  <h1>SPACE COAST WATER OPS IS ONLINE</h1>
-  <p>The GitHub Pages HTML file is loading correctly.</p>
+  <main>
+    <h1>Space Coast Water Ops</h1>
+    <p class="subtitle">Current wind and marine conditions.</p>
+
+    <section class="controls">
+      <select id="siteSelect" aria-label="Select location">
+        <option value="cocoaBeach">Cocoa Beach</option>
+        <option value="capeCanaveral">Cape Canaveral</option>
+        <option value="sebastianInlet">Sebastian Inlet</option>
+      </select>
+
+      <button id="refreshButton" type="button">
+        Refresh Conditions
+      </button>
+    </section>
+
+    <p id="status">Loading conditions...</p>
+
+    <div id="errorBox" class="error hidden"></div>
+
+    <section id="results" class="grid hidden">
+      <article class="card">
+        <h2>Current Wind</h2>
+
+        <div class="metric">
+          <span class="metric-label">Wind Speed</span>
+          <strong id="windSpeed">--</strong>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">Wind Gusts</span>
+          <strong id="windGusts">--</strong>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">Wind Direction</span>
+          <strong id="windDirection">--</strong>
+        </div>
+      </article>
+
+      <article class="card">
+        <h2>Current Marine Conditions</h2>
+
+        <div class="metric">
+          <span class="metric-label">Wave Height</span>
+          <strong id="waveHeight">--</strong>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">Wave Period</span>
+          <strong id="wavePeriod">--</strong>
+        </div>
+
+        <div class="metric">
+          <span class="metric-label">Wave Direction</span>
+          <strong id="waveDirection">--</strong>
+        </div>
+      </article>
+    </section>
+
+    <footer>
+      Forecast information is advisory only. Confirm local conditions before water operations.
+    </footer>
+  </main>
 
   <script>
-    console.log("JavaScript is running correctly.");
+    const sites = {
+      cocoaBeach: {
+        name: "Cocoa Beach",
+        lat: 28.3200,
+        lon: -80.6076
+      },
+      capeCanaveral: {
+        name: "Cape Canaveral",
+        lat: 28.4058,
+        lon: -80.6048
+      },
+      sebastianInlet: {
+        name: "Sebastian Inlet",
+        lat: 27.8606,
+        lon: -80.4473
+      }
+    };
+
+    const siteSelect = document.getElementById("siteSelect");
+    const refreshButton = document.getElementById("refreshButton");
+    const status = document.getElementById("status");
+    const errorBox = document.getElementById("errorBox");
+    const results = document.getElementById("results");
+
+    function formatNumber(value, unit) {
+      if (value === null || value === undefined) {
+        return "--";
+      }
+
+      return `${Number(value).toFixed(1)} ${unit}`;
+    }
+
+    function directionToCompass(degrees) {
+      if (degrees === null || degrees === undefined) {
+        return "--";
+      }
+
+      const directions = [
+        "N", "NNE", "NE", "ENE",
+        "E", "ESE", "SE", "SSE",
+        "S", "SSW", "SW", "WSW",
+        "W", "WNW", "NW", "NNW"
+      ];
+
+      const index = Math.round(Number(degrees) / 22.5) % 16;
+
+      return `${directions[index]} (${Math.round(Number(degrees))}°)`;
+    }
+
+    async function fetchSite(site) {
+      const weatherParams = new URLSearchParams({
+        latitude: String(site.lat),
+        longitude: String(site.lon),
+        current: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
+        forecast_days: "2",
+        timezone: "America/New_York",
+        wind_speed_unit: "ms"
+      });
+
+      const marineParams = new URLSearchParams({
+        latitude: String(site.lat),
+        longitude: String(site.lon),
+        current: "wave_height,wave_period,wave_direction",
+        forecast_days: "2",
+        timezone: "America/New_York"
+      });
+
+      const weatherUrl =
+        "https://api.open-meteo.com/v1/forecast?" +
+        weatherParams.toString();
+
+      const marineUrl =
+        "https://marine-api.open-meteo.com/v1/marine?" +
+        marineParams.toString();
+
+      const [weatherResponse, marineResponse] = await Promise.all([
+        fetch(weatherUrl),
+        fetch(marineUrl)
+      ]);
+
+      if (!weatherResponse.ok) {
+        const details = await weatherResponse.text();
+
+        throw new Error(
+          `Weather request failed: HTTP ${weatherResponse.status}\n${details}`
+        );
+      }
+
+      if (!marineResponse.ok) {
+        const details = await marineResponse.text();
+
+        throw new Error(
+          `Marine request failed: HTTP ${marineResponse.status}\n${details}`
+        );
+      }
+
+      return {
+        site,
+        weather: await weatherResponse.json(),
+        marine: await marineResponse.json()
+      };
+    }
+
+    function displayConditions(data) {
+      const wind = data.weather.current;
+      const waves = data.marine.current;
+
+      document.getElementById("windSpeed").textContent =
+        formatNumber(wind.wind_speed_10m, "m/s");
+
+      document.getElementById("windGusts").textContent =
+        formatNumber(wind.wind_gusts_10m, "m/s");
+
+      document.getElementById("windDirection").textContent =
+        directionToCompass(wind.wind_direction_10m);
+
+      document.getElementById("waveHeight").textContent =
+        formatNumber(waves.wave_height, "m");
+
+      document.getElementById("wavePeriod").textContent =
+        formatNumber(waves.wave_period, "sec");
+
+      document.getElementById("waveDirection").textContent =
+        directionToCompass(waves.wave_direction);
+    }
+
+    async function loadConditions() {
+      const site = sites[siteSelect.value];
+
+      refreshButton.disabled = true;
+      results.classList.add("hidden");
+      errorBox.classList.add("hidden");
+      status.textContent = `Loading conditions for ${site.name}...`;
+
+      try {
+        const data = await fetchSite(site);
+
+        displayConditions(data);
+
+        results.classList.remove("hidden");
+        status.textContent = `${site.name} conditions loaded successfully.`;
+      } catch (error) {
+        console.error(error);
+
+        status.textContent = "Unable to load conditions.";
+        errorBox.textContent = error.message;
+        errorBox.classList.remove("hidden");
+      } finally {
+        refreshButton.disabled = false;
+      }
+    }
+
+    refreshButton.addEventListener("click", loadConditions);
+    siteSelect.addEventListener("change", loadConditions);
+
+    loadConditions();
   </script>
 </body>
 </html>
