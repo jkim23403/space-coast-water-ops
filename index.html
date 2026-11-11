@@ -30,7 +30,7 @@
     }
 
     main {
-      max-width: 1000px;
+      max-width: 950px;
       margin: 0 auto;
     }
 
@@ -78,13 +78,9 @@
       opacity: 0.65;
     }
 
-    .hidden {
-      display: none;
-    }
-
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 16px;
       margin-top: 20px;
     }
@@ -126,6 +122,10 @@
       white-space: pre-wrap;
     }
 
+    .hidden {
+      display: none;
+    }
+
     footer {
       margin-top: 28px;
       color: var(--muted);
@@ -140,7 +140,7 @@
     <p class="subtitle">Current wind and marine conditions.</p>
 
     <section class="controls">
-      <select id="siteSelect" aria-label="Select location">
+      <select id="siteSelect">
         <option value="cocoaBeach">Cocoa Beach</option>
         <option value="capeCanaveral">Cape Canaveral</option>
         <option value="sebastianInlet">Sebastian Inlet</option>
@@ -255,7 +255,6 @@
         latitude: String(site.lat),
         longitude: String(site.lon),
         current: "wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-        forecast_days: "2",
         timezone: "America/New_York",
         wind_speed_unit: "ms"
       });
@@ -264,7 +263,6 @@
         latitude: String(site.lat),
         longitude: String(site.lon),
         current: "wave_height,wave_period,wave_direction",
-        forecast_days: "2",
         timezone: "America/New_York"
       });
 
@@ -298,9 +296,9 @@
       }
 
       return {
-        site,
         weather: await weatherResponse.json(),
-        marine: await marineResponse.json()
+        marine: await marineResponse.json(),
+        site
       };
     }
 
@@ -331,8 +329,8 @@
       const site = sites[siteSelect.value];
 
       refreshButton.disabled = true;
-      results.classList.add("hidden");
       errorBox.classList.add("hidden");
+      results.classList.add("hidden");
       status.textContent = `Loading conditions for ${site.name}...`;
 
       try {
