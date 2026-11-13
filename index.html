@@ -54,6 +54,45 @@
       margin: 0 auto;
     }
 
+    .header-content {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .header-title {
+      min-width: 0;
+    }
+
+    .zulu-clock {
+      min-width: 205px;
+      padding: 11px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(13, 43, 69, 0.92);
+      text-align: right;
+    }
+
+    .zulu-clock-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .zulu-clock-time {
+      display: block;
+      margin-top: 4px;
+      color: var(--blue);
+      font-family: "Courier New", Courier, monospace;
+      font-size: 1.12rem;
+      font-weight: 800;
+    }
+
     main {
       padding: 22px 0 45px;
     }
@@ -421,6 +460,15 @@
         width: min(100% - 24px, 1280px);
       }
 
+      .header-content {
+        align-items: stretch;
+      }
+
+      .zulu-clock {
+        width: 100%;
+        text-align: left;
+      }
+
       .summary-grid,
       .metrics-grid,
       .live-card .metrics-grid {
@@ -442,10 +490,17 @@
 <body>
   <header>
     <div class="header-content">
-      <h1>Space Coast Live &amp; 48-Hr Small Craft Go/No-Go</h1>
-      <p class="subtitle">
-        NDBC buoy observations, current local conditions, and 48-hour planning outlook.
-      </p>
+      <div class="header-title">
+        <h1>Space Coast Live &amp; 48-Hr Small Craft Go/No-Go</h1>
+        <p class="subtitle">
+          NDBC buoy observations, current local conditions, and 48-hour planning outlook.
+        </p>
+      </div>
+
+      <div class="zulu-clock" aria-live="polite">
+        <span class="zulu-clock-label">Current Zulu Time</span>
+        <strong id="zuluClock" class="zulu-clock-time">--</strong>
+      </div>
     </div>
   </header>
 
@@ -720,6 +775,33 @@
     let copMap;
     let selectedSiteMarker;
 
+    function updateZuluClock() {
+      const zuluClock = document.getElementById("zuluClock");
+
+      if (!zuluClock) {
+        return;
+      }
+
+      const now = new Date();
+
+      const date = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "UTC",
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }).format(now).toUpperCase();
+
+      const time = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "UTC",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23"
+      }).format(now);
+
+      zuluClock.textContent = `${date} ${time}Z`;
+    }
+
     function formatNumber(value, decimals = 1) {
       return Number.isFinite(value) ? value.toFixed(decimals) : "--";
     }
@@ -817,12 +899,6 @@
       );
     }
 
-    /*
-      Planning thresholds:
-      Green: wind <15 kt, gust <20 kt, waves <3 ft
-      Yellow: wind 15–20 kt, gust 20–25 kt, or waves 3–5 ft
-      Red: wind >20 kt, gust >25 kt, or waves >5 ft
-    */
     function getDecision(windKnots, gustKnots, waveFeet) {
       if (windKnots > 20 || gustKnots > 25 || waveFeet > 5) {
         return {
@@ -850,17 +926,6 @@
       };
     }
 
-    /*
-      Parse the current NDBC standard meteorological observation.
-
-      WSPD = wind speed, m/s
-      GST  = wind gust, m/s
-      WVHT = significant wave height, m
-      DPD  = dominant wave period, sec
-      MWD  = mean wave direction, degrees true
-      ATMP = air temperature, Celsius
-      WTMP = water temperature, Celsius
-    */
     function parseNdbcObservation(text) {
       const lines = text
         .split("\n")
@@ -1549,6 +1614,9 @@
 
     refreshButton.addEventListener("click", loadDashboard);
     siteSelect.addEventListener("change", loadDashboard);
+
+    updateZuluClock();
+    setInterval(updateZuluClock, 1000);
 
     loadDashboard();
   </script>
